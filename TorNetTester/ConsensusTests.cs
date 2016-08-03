@@ -36,7 +36,7 @@ namespace TorNetTester
         [TestMethod]
         public void DownloadConsensus()
         {
-            Consensus consensus = new Consensus(Consensus.Options.force_download);
+            Consensus consensus = new Consensus(Consensus.Options.ForceDownload);
             return;
         }
     }

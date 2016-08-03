@@ -86,7 +86,24 @@ namespace TorNet
 
         internal static uint ToUInt32(this byte[] data)
         {
-            return (uint)((((((data[3] * 256) + data[2]) * 256) + data[1]) * 256) + data[0]);
+            uint result = data[3];
+            result = (256 * result) + data[2];
+            result = (256 * result) + data[1];
+            result = (256 * result) + data[0];
+            return result;
+        }
+
+        internal static ulong ToUInt64(this byte[] data)
+        {
+            ulong result = data[7];
+            result = (256 * result) + data[6];
+            result = (256 * result) + data[5];
+            result = (256 * result) + data[4];
+            result = (256 * result) + data[3];
+            result = (256 * result) + data[2];
+            result = (256 * result) + data[1];
+            result = (256 * result) + data[0];
+            return result;
         }
 
         internal static byte[] ToArray(this uint data)

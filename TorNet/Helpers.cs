@@ -32,17 +32,24 @@ namespace TorNet
             return result;
         }
 
+        /// <summary>Asynchronously retrieve an HTTP url.
+        /// WARNING : This method MUST NOT be used except for initial consensus
+        /// download.</summary>
+        /// <param name="hostName"></param>
+        /// <param name="port"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
         internal static async Task<string> HttpGet(string hostName, int port, string path)
         {
             using (HttpClient client = new HttpClient() {
-                BaseAddress = new Uri(string.Format("https://{0}:{1}/", hostName, port))
+                BaseAddress = new Uri(string.Format("http://{0}:{1}/", hostName, port))
                 })
             {
                 HttpResponseMessage response = await client.GetAsync(path);
                 if (!response.IsSuccessStatusCode) {
                     throw new ApplicationException();
                 }
-                return response.Content.ToString();
+                return await response.Content.ReadAsStringAsync();
             }
         }
 
@@ -96,8 +103,9 @@ namespace TorNet
 
         internal static DateTime ParseTime(string value)
         {
-            // must be in format "2016-06-14 01:00:00"
-            return DateTime.ParseExact(value, "yyyy-MM-dd hh:mm:ss", null);
+            // must be in format "2016-06-14T01:00:00"
+            try { return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null); }
+            catch { throw; }
         }
 
         internal static void Resize(ref byte[] buffer, int new_size)

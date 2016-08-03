@@ -40,55 +40,60 @@ namespace TorNet.Tor
                 return result;
             }
 
-            internal void Parse(Consensus consensus, string content, bool reject_invalid = true)
+            /// <summary>Parse the given consensus content and setup the consensus
+            /// instance accordingly.</summary>
+            /// <param name="consensus"></param>
+            /// <param name="content"></param>
+            /// <param name="rejectInvalid"></param>
+            internal void Parse(Consensus consensus, string content, bool rejectInvalid = true)
             {
                 string[] lines = content.Split('\n');
-                document_location current_location = document_location.preamble;
+                DocumentLocation currentLocation = DocumentLocation.preamble;
                 OnionRouter current_router = null;
 
                 foreach (string line in lines) {
-                    string[] splitted_line = line.Split(' ');
+                    string[] currentLineItems = line.Split(' ');
 
                     // move the location if we are at the router status entries.
-                    if ((1 == splitted_line[0].Length) && ('r' == splitted_line[0][0])) {
-                        current_location = document_location.router_status_entry;
+                    if ((1 == currentLineItems[0].Length) && ('r' == currentLineItems[0][0])) {
+                        currentLocation = DocumentLocation.RouterStatusEntry;
                     }
-                    else if ("directory-footer" == splitted_line[0]) {
-                        current_location = document_location.directory_footer;
+                    else if ("directory-footer" == currentLineItems[0]) {
+                        currentLocation = DocumentLocation.DirectoryFooter;
                     }
 
-                    switch (current_location) {
-                        case document_location.preamble:
-                            if ("valid-until" == splitted_line[0]) {
-                                consensus._valid_until =
-                                    Helpers.ParseTime(splitted_line[1] + " " + splitted_line[2]);
+                    switch (currentLocation) {
+                        case DocumentLocation.preamble:
+                            if ("valid-until" == currentLineItems[0]) {
+                                consensus._validUntil =
+                                    Helpers.ParseTime(currentLineItems[1] + " " + currentLineItems[2]);
 
-                                if (reject_invalid && consensus._valid_until < DateTime.Now) {
+                                if (rejectInvalid && consensus._validUntil < DateTime.Now) {
                                     return;
                                 }
                             }
                             break;
-                        case document_location.router_status_entry:
+                        case DocumentLocation.RouterStatusEntry:
                             // check if the control word has at least one letter.
-                            if (1 > splitted_line[0].Length) { break; }
-                            Globals.Assert(splitted_line[0].Length == 1);
+                            if (1 > currentLineItems[0].Length) { break; }
+                            Globals.Assert(1 == currentLineItems[0].Length);
 
-                            switch (splitted_line[0][0]) {
+                            switch (currentLineItems[0][0]) {
                                 case 'r':
                                     // router.
-                                    if (Enum.IsDefined(typeof(router_status_entry_r_type), (router_status_entry_r_type)splitted_line.Length)) {
+                                    if (Enum.IsDefined(typeof(router_status_entry_r_type), (router_status_entry_r_type)currentLineItems.Length)) {
                                         // next line.
                                         continue;
                                     }
                                     string identity_fingerprint = Base16.Encode(
-                                        Base64.Decode(splitted_line[(int)router_status_entry_r_type.router_status_entry_r_identity]));
+                                        Base64.Decode(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_identity]));
                                     current_router = new OnionRouter(consensus,
-                                        splitted_line[(int)router_status_entry_r_type.router_status_entry_r_nickname],
-                                        splitted_line[(int)router_status_entry_r_type.router_status_entry_r_ip],
-                                        (ushort)(int.Parse(splitted_line[(int)router_status_entry_r_type.router_status_entry_r_or_port])),
-                                        (ushort)(int.Parse(splitted_line[(int)router_status_entry_r_type.router_status_entry_r_dir_port])),
+                                        currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_nickname],
+                                        currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_ip],
+                                        (ushort)(int.Parse(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_or_port])),
+                                        (ushort)(int.Parse(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_dir_port])),
                                         identity_fingerprint);
-                                    consensus._onion_router_map.Add(identity_fingerprint, current_router);
+                                    consensus._onionRouterMap.Add(identity_fingerprint, current_router);
                                     break;
                                 case 's':
                                     // flags.
@@ -98,7 +103,12 @@ namespace TorNet.Tor
                                     break;
                             }
                             break;
-                        case document_location.directory_footer:
+                        case DocumentLocation.DirectoryFooter:
+                            // TODO : The footer is ignored in the base implementation.
+                            // This is unacceptable because it contains the authoritative directories
+                            // signatures. The consensus may be retrieved using a simple HTTP request
+                            // that is easily forged.
+
                             // ignore directory footer.
                             return;
                     }
@@ -115,11 +125,11 @@ namespace TorNet.Tor
             // 3.4.1.
             // Status documents contain a preamble, an authority section, a list of
             // router status entries, and one or more footer signature, in that order.
-            internal enum document_location
+            internal enum DocumentLocation
             {
                 preamble,
-                router_status_entry,
-                directory_footer
+                RouterStatusEntry,
+                DirectoryFooter
             }
 
             // preamble.
