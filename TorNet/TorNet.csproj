@@ -40,8 +40,50 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TorNode.cs" />
+    <Compile Include="ClientNode.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="Cryptography\AES.cs" />
+    <Compile Include="Cryptography\Base16.cs" />
+    <Compile Include="Cryptography\Base32.cs" />
+    <Compile Include="Cryptography\Base64.cs" />
+    <Compile Include="Cryptography\BigInteger.cs" />
+    <Compile Include="Cryptography\CryptoProvider.cs" />
+    <Compile Include="Cryptography\EncodingBase.cs" />
+    <Compile Include="Cryptography\Randomizer.cs" />
+    <Compile Include="Cryptography\RSA.cs" />
+    <Compile Include="Cryptography\SHA1.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="Globals.cs" />
+    <Compile Include="Helpers.cs" />
+    <Compile Include="InteropException.cs" />
+    <Compile Include="Interop\Advapi32.cs" />
+    <Compile Include="Interop\Crypt32.cs" />
+    <Compile Include="Endianness.cs" />
+    <Compile Include="Interop\Secur32.cs" />
+    <Compile Include="Interop\WinErrors.cs" />
+    <Compile Include="IO\StreamWrapper.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="NativeMarshaler.cs" />
+    <Compile Include="SslSocket.cs" />
+    <Compile Include="TcpSocket.cs" />
+    <Compile Include="Tor\Cell.cs" />
+    <Compile Include="Tor\CellCommand.cs" />
+    <Compile Include="Tor\Circuit.cs" />
+    <Compile Include="Tor\CircuitNode.cs" />
+    <Compile Include="Tor\Consensus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tor\Cryptography\HybridEncryptor.cs" />
+    <Compile Include="Tor\Cryptography\KeyAgrement.cs" />
+    <Compile Include="Tor\HiddenService.cs" />
+    <Compile Include="Tor\OnionRouter.cs" />
+    <Compile Include="Tor\Parsers\ConsensusParser.cs" />
+    <Compile Include="Tor\Parsers\HiddenServiceDescriptorParser.cs" />
+    <Compile Include="Tor\Parsers\IntroductionPointParser.cs" />
+    <Compile Include="Tor\Parsers\ServerDescriptorParser.cs" />
+    <Compile Include="Tor\RelayCell.cs" />
+    <Compile Include="Tor\Socket.cs" />
+    <Compile Include="Tor\TorSocket.cs" />
+    <Compile Include="Tor\TorStream.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
