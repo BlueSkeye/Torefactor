@@ -39,5 +39,13 @@ namespace TorNetTester
             Consensus consensus = new Consensus(Consensus.Options.ForceDownload);
             return;
         }
+
+        /// <summary>Buld consensus from cached value.</summary>
+        [TestMethod]
+        public void BuildConsensusFromCache()
+        {
+            Consensus consensus = new Consensus(Consensus.Options.UseCache);
+            return;
+        }
     }
 }

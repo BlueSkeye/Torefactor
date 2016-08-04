@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Text;
 
 using TorNet.Interop;
@@ -38,7 +39,8 @@ namespace TorNet.Cryptography
                 Crypt32.CrypBinaryFlags.AnyHexadecimal, IntPtr.Zero,
                 ref output_size, out pdwSkip, out pdwFlags))
             {
-                throw new InteropException();
+                int nativeError = Marshal.GetLastWin32Error();
+                throw new InteropException(string.Format("ERROR {0}", nativeError);
             }
         }
 

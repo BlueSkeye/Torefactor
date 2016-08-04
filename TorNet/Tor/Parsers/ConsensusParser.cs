@@ -48,7 +48,7 @@ namespace TorNet.Tor
             internal void Parse(Consensus consensus, string content, bool rejectInvalid = true)
             {
                 string[] lines = content.Split('\n');
-                DocumentLocation currentLocation = DocumentLocation.preamble;
+                DocumentLocation currentLocation = DocumentLocation.Preamble;
                 OnionRouter current_router = null;
 
                 foreach (string line in lines) {
@@ -63,7 +63,7 @@ namespace TorNet.Tor
                     }
 
                     switch (currentLocation) {
-                        case DocumentLocation.preamble:
+                        case DocumentLocation.Preamble:
                             if ("valid-until" == currentLineItems[0]) {
                                 consensus._validUntil =
                                     Helpers.ParseTime(currentLineItems[1] + " " + currentLineItems[2]);
@@ -81,17 +81,17 @@ namespace TorNet.Tor
                             switch (currentLineItems[0][0]) {
                                 case 'r':
                                     // router.
-                                    if (Enum.IsDefined(typeof(router_status_entry_r_type), (router_status_entry_r_type)currentLineItems.Length)) {
+                                    if (!Enum.IsDefined(typeof(RouterStatusProperty), (RouterStatusProperty)currentLineItems.Length)) {
                                         // next line.
                                         continue;
                                     }
                                     string identity_fingerprint = Base16.Encode(
-                                        Base64.Decode(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_identity]));
+                                        Base64.Decode(currentLineItems[(int)RouterStatusProperty.Identity]));
                                     current_router = new OnionRouter(consensus,
-                                        currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_nickname],
-                                        currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_ip],
-                                        (ushort)(int.Parse(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_or_port])),
-                                        (ushort)(int.Parse(currentLineItems[(int)router_status_entry_r_type.router_status_entry_r_dir_port])),
+                                        currentLineItems[(int)RouterStatusProperty.Nickname],
+                                        currentLineItems[(int)RouterStatusProperty.IPAddress],
+                                        (ushort)(int.Parse(currentLineItems[(int)RouterStatusProperty.ORPort])),
+                                        (ushort)(int.Parse(currentLineItems[(int)RouterStatusProperty.DirectoryPort])),
                                         identity_fingerprint);
                                     consensus._onionRouterMap.Add(identity_fingerprint, current_router);
                                     break;
@@ -127,7 +127,7 @@ namespace TorNet.Tor
             // router status entries, and one or more footer signature, in that order.
             internal enum DocumentLocation
             {
-                preamble,
+                Preamble,
                 RouterStatusEntry,
                 DirectoryFooter
             }
@@ -139,50 +139,51 @@ namespace TorNet.Tor
             }
 
             // router status entry.
-            internal enum router_status_entry_type
+            internal enum RouterStatusEntryType
             {
-                router_status_entry_r,
-                router_status_entry_a,
-                router_status_entry_s,
-                router_status_entry_v,
-                router_status_entry_w,
-                router_status_entry_p,
-            };
+                R,
+                A,
+                S,
+                V,
+                W,
+                P,
+            }
 
-            internal enum router_status_entry_r_type
+            internal enum RouterStatusProperty
             {
                 // start counting from 1,
                 // because there is the "r" control word
                 // on the index 0.
-                router_status_entry_r_nickname = 1,
-                router_status_entry_r_identity,
-                router_status_entry_r_digest,
-                router_status_entry_r_publication_date,
-                router_status_entry_r_publication_time,
-                router_status_entry_r_ip,
-                router_status_entry_r_or_port,
-                router_status_entry_r_dir_port,
+                Nickname = 1,
+                Identity,
+                Digest,
+                PublicationDate,
+                PublicationTime,
+                IPAddress,
+                ORPort,
+                DirectoryPort,
 
                 // router_status_entry_r_item_count = 9
                 router_status_entry_r_item_count,
             }
 
-            internal enum router_status_entry_s_type
+            [Flags()]
+            internal enum RouterStatusType
             {
-                router_status_entry_s_none = 0x0000,
-                router_status_entry_s_authority = 0x0001,
-                router_status_entry_s_bad_exit = 0x0002,
-                router_status_entry_s_exit = 0x0004,
-                router_status_entry_s_fast = 0x0008,
-                router_status_entry_s_guard = 0x0010,
-                router_status_entry_s_hsdir = 0x0020,
-                router_status_entry_s_named = 0x0040,
-                router_status_entry_s_no_ed_consensus = 0x0080,
-                router_status_entry_s_stable = 0x0100,
-                router_status_entry_s_running = 0x0200,
-                router_status_entry_s_unnamed = 0x0400,
-                router_status_entry_s_valid = 0x0800,
-                router_status_entry_s_v2dir = 0x1000,
+                None = 0x0000,
+                Authority = 0x0001,
+                BadExit = 0x0002,
+                Exit = 0x0004,
+                Fast = 0x0008,
+                Guard = 0x0010,
+                HiddenServiceDirectory = 0x0020,
+                Named = 0x0040,
+                NoEdConsensus = 0x0080,
+                Stable = 0x0100,
+                Running = 0x0200,
+                Unnamed = 0x0400,
+                Valid = 0x0800,
+                V2Directory = 0x1000,
             }
         }
     }

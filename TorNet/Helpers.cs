@@ -103,9 +103,8 @@ namespace TorNet
 
         internal static DateTime ParseTime(string value)
         {
-            // must be in format "2016-06-14T01:00:00"
-            try { return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null); }
-            catch { throw; }
+            // must be in format "2016-06-14 01:00:00"
+            return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
         }
 
         internal static void Resize(ref byte[] buffer, int new_size)
