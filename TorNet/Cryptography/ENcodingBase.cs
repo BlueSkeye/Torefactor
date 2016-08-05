@@ -11,37 +11,29 @@ namespace TorNet.Cryptography
         internal static byte[] Decode(string input, Crypt32.CrypBinaryFlags flags,
             int inputSize)
         {
-            int output_size = 0;
-            byte[] result = null;
-            _Decode(input, input.Length, ref result, ref output_size, flags, true, false);
-            result = new byte[output_size];
-            _Decode(input, input.Length, ref result, ref output_size, flags, false, false);
-            return result;
-        }
-
-        private static void _Decode(string input, int input_size, ref byte[] output,
-            ref int output_size, Crypt32.CrypBinaryFlags flags, bool get_only_size,
-            bool alloc_buffer)
-        {
-            if (get_only_size) {
-                output_size = 0;
-                output = null;
-            }
-            else {
-                if (alloc_buffer) {
-                    output = new byte[output_size];
-                }
-            }
+            int outputSize = 0;
             int pdwSkip;
             int pdwFlags;
-
-            if (!Crypt32.CryptStringToBinary(input, input_size,
-                Crypt32.CrypBinaryFlags.AnyHexadecimal, IntPtr.Zero,
-                ref output_size, out pdwSkip, out pdwFlags))
+            if (!Crypt32.CryptStringToBinary(input, inputSize, flags, IntPtr.Zero,
+                ref outputSize, out pdwSkip, out pdwFlags))
             {
                 int nativeError = Marshal.GetLastWin32Error();
-                throw new InteropException(string.Format("ERROR {0}", nativeError);
+                throw new InteropException(nativeError);
             }
+            IntPtr nativeBuffer = IntPtr.Zero;
+            try {
+                nativeBuffer = Marshal.AllocCoTaskMem(outputSize);
+                if (!Crypt32.CryptStringToBinary(input, inputSize, flags, nativeBuffer,
+                    ref outputSize, out pdwSkip, out pdwFlags))
+                {
+                    int nativeError = Marshal.GetLastWin32Error();
+                    throw new InteropException(nativeError);
+                }
+                byte[] result = new byte[outputSize];
+                Marshal.Copy(nativeBuffer, result, 0, outputSize);
+                return result;
+            }
+            finally { if (IntPtr.Zero != nativeBuffer) { Marshal.FreeCoTaskMem(nativeBuffer); } }
         }
 
         internal static string Encode(byte[] input, Crypt32.CrypBinaryFlags flags,

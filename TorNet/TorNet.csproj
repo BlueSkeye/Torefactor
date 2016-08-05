@@ -64,6 +64,7 @@
     <Compile Include="IO\StreamWrapper.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="NativeMarshaler.cs" />
+    <Compile Include="ParsingException.cs" />
     <Compile Include="SslSocket.cs" />
     <Compile Include="TcpSocket.cs" />
     <Compile Include="Tor\Cell.cs" />

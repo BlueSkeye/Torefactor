@@ -83,7 +83,7 @@ namespace TorNet.Interop
             [In] IntPtr pbData,
             [In] int dwFlags);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CharSet = CharSet.Unicode)]
         internal static extern bool CryptStringToBinary(
             [In] string pszString,
             [In] int cchString,
