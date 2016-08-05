@@ -36,7 +36,7 @@ namespace TorNetTester
         [TestMethod]
         public void DownloadConsensus()
         {
-            Consensus consensus = new Consensus(Consensus.Options.ForceDownload);
+            Consensus consensus = Consensus.Fetch(Consensus.Options.ForceDownload);
             return;
         }
 
@@ -44,7 +44,7 @@ namespace TorNetTester
         [TestMethod]
         public void BuildConsensusFromCache()
         {
-            Consensus consensus = new Consensus(Consensus.Options.UseCache);
+            Consensus consensus = Consensus.Fetch(Consensus.Options.UseCache);
             return;
         }
     }

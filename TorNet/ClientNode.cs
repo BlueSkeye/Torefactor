@@ -12,7 +12,7 @@ namespace TorNet
     {
         public ClientNode()
         {
-            _consensus = new Consensus(Consensus.Options.DoNotUseCache);
+            _consensus = Consensus.Fetch(Consensus.Options.DoNotUseCache);
         }
 
         ~ClientNode()

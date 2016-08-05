@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClientNode.cs" />
+    <Compile Include="Tor\ConsensusOrVote.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Cryptography\AES.cs" />
     <Compile Include="Cryptography\Base16.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="Tor\Cryptography\KeyAgrement.cs" />
     <Compile Include="Tor\HiddenService.cs" />
     <Compile Include="Tor\OnionRouter.cs" />
+    <Compile Include="Tor\Parsers\ConsensusAndVoteBaseParser.cs" />
     <Compile Include="Tor\Parsers\ConsensusParser.cs" />
     <Compile Include="Tor\Parsers\HiddenServiceDescriptorParser.cs" />
     <Compile Include="Tor\Parsers\IntroductionPointParser.cs" />
@@ -86,8 +88,11 @@
     <Compile Include="Tor\TorSocket.cs" />
     <Compile Include="Tor\TorStream.cs" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <Folder Include="Docs\" />
+    <Content Include="Docs\dir-spec.txt" />
+    <Content Include="Docs\rend-spec.txt" />
+    <Content Include="Docs\tor-spec.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace TorNet.Tor
 {
-    internal partial class Consensus : IDisposable
+    internal partial class Consensus : ConsensusOrVote, IDisposable
     {
-        internal Consensus(Options options = Options.UseCache)
+        private Consensus()
         {
-            FetchConsensus(options);
+            return;
         }
 
         ~Consensus()
@@ -51,7 +51,7 @@ namespace TorNet.Tor
         /// download current consensus from a well known path.</summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        private string DownloadFromRandomAuthority(string path)
+        private static string DownloadFromRandomAuthority(string path)
         {
             Globals.LogInfo("consensus::download_from_random_authority() [path: {0}]", path);
             int authorityIndex;
@@ -72,7 +72,7 @@ namespace TorNet.Tor
         /// either grab it from cache and/or download it from a random authority.
         /// </summary>
         /// <param name="options"></param>
-        internal void FetchConsensus(Options options)
+        internal static Consensus Fetch(Options options)
         {
             string consensusContent = null;
             if (   (0 == (options & Options.ForceDownload))
@@ -89,17 +89,20 @@ namespace TorNet.Tor
                     File.WriteAllText(CachedConsensusFilePath, consensusContent);
                 }
             }
+            Consensus result = null;
             if (null != consensusContent) {
-                ParseConsensus(consensusContent);
+                result = Consensus.Parser.Parse(consensusContent);
             }
             // if the consensus is invalid, we have to download it anyway
-            if (_validUntilUTC < DateTime.UtcNow) {
+            // TODO : Don't download if options do not allow to do so.
+            if ((null == result) || (result._validUntilUTC < DateTime.UtcNow)) {
                 consensusContent = DownloadFromRandomAuthority("/tor/status-vote/current/consensus");
                 if (0 == (options & Options.DoNotUseCache)) {
                     File.WriteAllText(CachedConsensusFilePath, consensusContent);
                 }
-                ParseConsensus(consensusContent);
+                result = Consensus.Parser.Parse(consensusContent);
             }
+            return result;
         }
 
         private void destroy()
@@ -191,7 +194,8 @@ namespace TorNet.Tor
 
         private void ParseConsensus(string candidateContent)
         {
-            new Parser().Parse(this, candidateContent);
+            Parser.Parse(candidateContent);
+            // new Parser().Parse(this, candidateContent);
         }
 
         /// <summary>Hardcoded list of authorities.
