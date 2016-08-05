@@ -68,6 +68,10 @@ namespace TorNet.Tor
             return result;
         }
 
+        /// <summary>Retrieve and parse a valid consensus, depending on flags value,
+        /// either grab it from cache and/or download it from a random authority.
+        /// </summary>
+        /// <param name="options"></param>
         internal void FetchConsensus(Options options)
         {
             string consensusContent = null;
@@ -185,9 +189,9 @@ namespace TorNet.Tor
             return result;
         }
 
-        private void ParseConsensus(string consensus_content)
+        private void ParseConsensus(string candidateContent)
         {
-            new Parser().Parse(this, consensus_content);
+            new Parser().Parse(this, candidateContent);
         }
 
         /// <summary>Hardcoded list of authorities.

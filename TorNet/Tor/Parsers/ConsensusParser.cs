@@ -44,40 +44,35 @@ namespace TorNet.Tor
             /// instance accordingly.</summary>
             /// <param name="consensus"></param>
             /// <param name="content"></param>
-            /// <param name="rejectInvalid"></param>
+            /// <param name="rejectInvalid">true if the consensus must be rejected
+            /// ifvalidty date eceeds current date. Notwithstanding this flag, any
+            /// other malformation will trigger an exception.</param>
             internal void Parse(Consensus consensus, string content, bool rejectInvalid = true)
             {
                 string[] lines = content.Split('\n');
                 DocumentLocation currentLocation = DocumentLocation.Preamble;
                 OnionRouter current_router = null;
 
-                try
-                {
-                    foreach (string line in lines)
-                    {
+                try {
+                    foreach (string line in lines) {
                         string[] currentLineItems = line.Split(' ');
                         string currentLineKeyword = currentLineItems[0];
 
                         // move the location if we are at the router status entries.
-                        if ("r" == currentLineKeyword)
-                        {
+                        if ("r" == currentLineKeyword) {
                             currentLocation = DocumentLocation.RouterStatusEntry;
                         }
-                        else if ("directory-footer" == currentLineKeyword)
-                        {
+                        else if ("directory-footer" == currentLineKeyword) {
                             currentLocation = DocumentLocation.DirectoryFooter;
                         }
 
-                        switch (currentLocation)
-                        {
+                        switch (currentLocation) {
                             case DocumentLocation.Preamble:
-                                if ("valid-until" == currentLineKeyword)
-                                {
+                                if ("valid-until" == currentLineKeyword) {
                                     consensus._validUntilUTC =
                                         Helpers.ParseTime(currentLineItems[1] + " " + currentLineItems[2]);
 
-                                    if (rejectInvalid && (DateTime.UtcNow > consensus._validUntilUTC))
-                                    {
+                                    if (rejectInvalid && (DateTime.UtcNow > consensus._validUntilUTC)) {
                                         throw new ParsingException("Invalid consensus : date exceeded {0}",
                                             consensus._validUntilUTC);
                                     }
@@ -88,12 +83,10 @@ namespace TorNet.Tor
                                 if (1 > currentLineKeyword.Length) { break; }
                                 Globals.Assert(1 == currentLineKeyword.Length);
 
-                                switch (currentLineKeyword)
-                                {
+                                switch (currentLineKeyword) {
                                     case "r":
                                         // router.
-                                        if (!Enum.IsDefined(typeof(RouterStatusProperty), (RouterStatusProperty)currentLineItems.Length))
-                                        {
+                                        if (!Enum.IsDefined(typeof(RouterStatusProperty), (RouterStatusProperty)currentLineItems.Length)) {
                                             // next line.
                                             continue;
                                         }
@@ -109,8 +102,7 @@ namespace TorNet.Tor
                                         break;
                                     case "s":
                                         // flags.
-                                        if (null != current_router)
-                                        {
+                                        if (null != current_router) {
                                             current_router.Flags = string_to_status_flags(line.Split(' '));
                                         }
                                         break;
@@ -137,9 +129,9 @@ namespace TorNet.Tor
             }
 
             private static readonly string[] preamble_control_words = new string[] {
-            "valid-until" };
+                "valid-until" };
             private static readonly char[] router_status_entry_chars = new char[] {
-            'r', 'a', 's', 'v', 'w', 'p', };
+                'r', 'a', 's', 'v', 'w', 'p', };
             private static readonly List<string> router_status_flags;
 
             // dir-spec.txt
