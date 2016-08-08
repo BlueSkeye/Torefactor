@@ -13,6 +13,12 @@ namespace TorNet
         {
         }
 
+        internal ParsingException(Exception inner)
+            : base("Internal error.", inner)
+        {
+            return;
+        }
+
         private static string FormatMessage(string message, params object[] args)
         {
             try { return string.Format(message, args); }

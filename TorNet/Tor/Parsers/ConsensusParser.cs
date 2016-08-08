@@ -56,18 +56,18 @@ namespace TorNet.Tor
                 return target;
             }
 
-            protected override void SetConsensusMethod(int value)
+            protected override void SetConsensusMethod(VotingMethod value)
             {
-                throw new NotImplementedException();
+                _method = value;
             }
 
-            OnionRouter.status_flags string_to_status_flags(IEnumerable<string> splitted)
+            OnionRouter.StatusFlags string_to_status_flags(IEnumerable<string> splitted)
             {
-                OnionRouter.status_flags result = OnionRouter.status_flags.none;
+                OnionRouter.StatusFlags result = OnionRouter.StatusFlags.none;
                 foreach (string flag_string in splitted) {
                     int index = router_status_flags.IndexOf(flag_string);
                     if (-1 != index) {
-                        OnionRouter.status_flags flag = (OnionRouter.status_flags)(1 << index);
+                        OnionRouter.StatusFlags flag = (OnionRouter.StatusFlags)(1 << index);
                         result |= flag;
                     }
                 }
@@ -169,6 +169,7 @@ namespace TorNet.Tor
                 return;
             }
 
+            private VotingMethod _method;
             private Consensus _target;
             private static readonly string[] preamble_control_words = new string[] {
                 "valid-until" };

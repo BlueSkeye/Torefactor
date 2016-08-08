@@ -15,7 +15,7 @@ namespace TorNet.Tor
         {
             this._rendezvous_circuit = rendezvous_circuit;
             this._socket = rendezvous_circuit.TorSocket;
-            this._consensus = rendezvous_circuit.TorSocket.OnionRouter.Consensus;
+            this._owner = rendezvous_circuit.TorSocket.OnionRouter.Owner;
             this._onion = onion;
             this._permanent_id = Base32.decode(_onion);
             Logger.Info("hidden_service() [{0}.onion]", onion);
@@ -89,9 +89,9 @@ namespace TorNet.Tor
             //
             _responsible_directory_list.Clear();
             List<OnionRouter> directory_list =
-                _consensus.get_onion_routers_by_criteria(
+                _owner.get_onion_routers_by_criteria(
                     new Consensus.SearchCriteria() {
-                        flags = OnionRouter.status_flags.hsdir | OnionRouter.status_flags.v2dir
+                        flags = OnionRouter.StatusFlags.HSDir | OnionRouter.StatusFlags.V2Dir
                     }
             );
 
@@ -138,7 +138,7 @@ namespace TorNet.Tor
                 // parse hidden service descriptor.
                 if (!hidden_service_descriptor.Contains("404 Not found")) {
                     HiddenServiceDescriptorParser parser = new HiddenServiceDescriptorParser();
-                    parser.parse(_consensus, hidden_service_descriptor);
+                    parser.parse(_owner, hidden_service_descriptor);
                     _introduction_point_list = parser.introduction_point_list;
                     parser.introduction_point_list = null;
                     return i;
@@ -159,7 +159,7 @@ namespace TorNet.Tor
             }
         }
 
-        private Consensus _consensus;
+        private ConsensusOrVote _owner;
         private string _onion;
         private byte[] _permanent_id; // crypto::base32::decode(_onion)
         private Circuit _rendezvous_circuit;

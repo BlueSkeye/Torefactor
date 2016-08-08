@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace TorNet
@@ -99,12 +99,6 @@ namespace TorNet
                 }
             }
             return position;
-        }
-
-        internal static DateTime ParseTime(string value)
-        {
-            // must be in format "2016-06-14 01:00:00"
-            return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
         }
 
         internal static void Resize(ref byte[] buffer, int new_size)

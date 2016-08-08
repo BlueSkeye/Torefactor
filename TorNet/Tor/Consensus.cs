@@ -95,7 +95,7 @@ namespace TorNet.Tor
             }
             // if the consensus is invalid, we have to download it anyway
             // TODO : Don't download if options do not allow to do so.
-            if ((null == result) || (result._validUntilUTC < DateTime.UtcNow)) {
+            if ((null == result) || (result.ValidUntilUTC < DateTime.UtcNow)) {
                 consensusContent = DownloadFromRandomAuthority("/tor/status-vote/current/consensus");
                 if (0 == (options & Options.DoNotUseCache)) {
                     File.WriteAllText(CachedConsensusFilePath, consensusContent);
@@ -138,7 +138,7 @@ namespace TorNet.Tor
                         continue;
                     }
                 }
-                if (criteria.flags != OnionRouter.status_flags.none) {
+                if (criteria.flags != OnionRouter.StatusFlags.none) {
                     if ((router.Flags & criteria.flags) != criteria.flags) {
                         continue;
                     }
@@ -156,40 +156,6 @@ namespace TorNet.Tor
                 }
             }
             return null;
-        }
-
-        internal OnionRouter get_onion_router_by_identity_fingerprint(string identity_fingerprint)
-        {
-            return _onionRouterMap[identity_fingerprint];
-        }
-
-        internal List<OnionRouter> get_onion_routers_by_criteria(SearchCriteria criteria)
-        {
-            List<OnionRouter> result = new List<OnionRouter>();
-            foreach (OnionRouter router in _onionRouterMap.Values) {
-                if (!Helpers.IsNullOrEmpty(criteria.allowed_dir_ports)) {
-                    if (-1 == criteria.allowed_dir_ports.IndexOf(router.DirPort)) {
-                        continue;
-                    }
-                }
-                if (!Helpers.IsNullOrEmpty(criteria.allowed_or_ports)) {
-                    if (-1 == criteria.allowed_or_ports.IndexOf(router.ORPort)) {
-                        continue;
-                    }
-                }
-                if (!Helpers.IsNullOrEmpty(criteria.forbidden_onion_routers)) {
-                    if (-1 == criteria.forbidden_onion_routers.IndexOf(router)) {
-                        continue;
-                    }
-                }
-                if (criteria.flags != OnionRouter.status_flags.none) {
-                    if ((router.Flags & criteria.flags) != criteria.flags) {
-                        continue;
-                    }
-                }
-                result.Add(router);
-            }
-            return result;
         }
 
         private void ParseConsensus(string candidateContent)
@@ -224,8 +190,6 @@ namespace TorNet.Tor
 
         private const string CachedConsensusFileName = "cached-consensus";
         private static string _cachedConsensusFilePath;
-        private Dictionary<string, OnionRouter> _onionRouterMap = new Dictionary<string, OnionRouter>();
-        private DateTime _validUntilUTC;
 
         [Flags()]
         internal enum Options
@@ -234,14 +198,6 @@ namespace TorNet.Tor
             UseCache = 0x01,
             DoNotUseCache = 0x02,
             ForceDownload = 0x04,
-        }
-
-        public class SearchCriteria
-        {
-            internal List<ushort> allowed_dir_ports = new List<ushort>();
-            internal List<ushort> allowed_or_ports = new List<ushort>();
-            internal List<OnionRouter> forbidden_onion_routers = new List<OnionRouter>();
-            internal OnionRouter.status_flags flags;
         }
     }
 }
