@@ -6,7 +6,7 @@ namespace TorNet.Cryptography
 {
     internal class CryptoProvider
     {
-        internal CryptoProvider()
+        private CryptoProvider()
         {
             _providerHandle = IntPtr.Zero;
             init();

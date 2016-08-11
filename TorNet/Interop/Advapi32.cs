@@ -40,7 +40,7 @@ namespace TorNet.Interop
         internal static extern bool CryptGetHashParam(
             [In] IntPtr /* HCRYPTHASH */ hHash,
             [In] int dwParam,
-            [In, Out] ref byte[] pbData,
+            [In] IntPtr pbData,
             [In, Out] ref int pdwDataLen,
             [In] int dwFlags);
 

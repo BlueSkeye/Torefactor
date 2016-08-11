@@ -102,7 +102,7 @@ namespace TorNet.Tor
 
         private void FetchDescriptor()
         {
-            ServerDescriptorParser.Parse(this, _consensus.get_router_consensus(IdentityFingerprint));
+            ServerDescriptorParser.Parse(this, Owner.get_router_consensus(IdentityFingerprint));
         }
 
         internal void Reject(ushort port)
@@ -116,7 +116,7 @@ namespace TorNet.Tor
         }
 
         private List<AddressRange> _acceptedRanges = new List<AddressRange>();
-        private Consensus _consensus;
+        // private Consensus _consensus;
         private byte[] _onion_key;
         private List<AddressRange> _rejectedRanges = new List<AddressRange>();
         private byte[] _signing_key;

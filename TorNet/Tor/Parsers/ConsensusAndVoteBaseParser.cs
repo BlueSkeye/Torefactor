@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 
+using TorNet.Cryptography;
+
 namespace TorNet.Tor.Parsers
 {
     /// <summary></summary>
@@ -266,7 +268,7 @@ namespace TorNet.Tor.Parsers
             return result;
         }
 
-        private string FetchSignature(IEnumerator lineEnumerator)
+        private byte[] FetchSignature(IEnumerator lineEnumerator)
         {
             StringBuilder builder = new StringBuilder();
 
@@ -286,7 +288,7 @@ namespace TorNet.Tor.Parsers
                 _currentLineNumber++;
                 currentLine = (string)lineEnumerator.Current;
                 if (SignatureFooter == currentLine) {
-                    return builder.ToString();
+                    return Base64.Decode(builder.ToString());
                 }
                 builder.Append(currentLine);
             }
@@ -322,15 +324,29 @@ namespace TorNet.Tor.Parsers
             return result.ToArray();
         }
 
-        protected void _Parse(string content)
+        private byte[] GetToBeHashedValue(string content)
+        {
+            string endOfSignedContent = _expectedKeywords[ParserState.DirectorySignature] + " ";
+            int endOfSignedContentIndex = content.IndexOf(endOfSignedContent);
+
+            if (-1 == endOfSignedContentIndex) {
+                ParsingError("Unable to find end of signed content.");
+            }
+            return Encoding.UTF8.GetBytes(
+                content.Substring(0, endOfSignedContentIndex + endOfSignedContent.Length));
+        }
+
+        protected bool _Parse(string content, bool rejectOutdated)
         {
             bool exceptionTriggered = false;
             string[] lines = content.Split('\n');
-            _currentState = ParserState.NetworkStatusVersion;
-            _performStandardChecks = true;
+            byte[] toBeHashedContent = null;
             IEnumerator lineEnumerator = null;
+            bool outdatedEncountered = false;
             int subItemIndex;
 
+            _currentState = ParserState.NetworkStatusVersion;
+            _performStandardChecks = true;
             try {
                 Authority currentAuthority = null;
                 lineEnumerator = lines.GetEnumerator();
@@ -384,6 +400,10 @@ namespace TorNet.Tor.Parsers
                         case ParserState.ValidUntil:
                             _target.ValidUntilUTC = FetchTimestampItem();
                             AssertEndOfLine(ParserState.VotingDelay);
+                            if (rejectOutdated && (DateTime.UtcNow > _target.ValidUntilUTC)) {
+                                outdatedEncountered = true;
+                                return false;
+                            }
                             break;
                         case ParserState.VotingDelay:
                             _target.VoteSeconds = FetchIntegerItem();
@@ -554,6 +574,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.R, true, true);
                             break;
                         case ParserState.DirectoryFooter:
+                            toBeHashedContent = GetToBeHashedValue(content);
                             AssertEndOfLine(ParserState.BandwidthWeights, false, true);
                             break;
                         case ParserState.BandwidthWeights:
@@ -575,17 +596,19 @@ namespace TorNet.Tor.Parsers
                             if (_firstSignatureFound && (DocumentType.Consensus != _documentType)) {
                                 ParsingError("More than one signature is not expected.");
                             }
-                            //TODO : Dont handle this for now.
-                            while (CaptureOptionalItem()) { }
-                            FetchSignature(lineEnumerator);
+                            // TODO : This must be extracted from this method and performed during
+                            // a later step.
+                            if (PrepareSignatureVerification(lineEnumerator, toBeHashedContent)) {
+                                _firstSignatureFound = true;
+                            }
                             AssertEndOfLine(ParserState.DirectorySignature, false, true);
-                            _firstSignatureFound = true;
                             break;
                         default:
                             throw new ParsingException("Internal error : unexpected state {0}",
                                 _currentState);
                     }
                 }
+                return true;
             }
             catch (Exception e) {
                 if (!(e is ParsingException)) {
@@ -603,7 +626,7 @@ namespace TorNet.Tor.Parsers
                         ParsingError("End state reached with remaining lines.");
                     }
                 }
-                if (null != _currentRouter) { WTF(); }
+                if (!outdatedEncountered && (null != _currentRouter)) { WTF(); }
             }
         }
 
@@ -666,6 +689,62 @@ namespace TorNet.Tor.Parsers
                         break;
                 }
             }
+            return result;
+        }
+
+        /// <summary>Retrieve last part of the consensus or vote, that is extract signatures
+        /// and store then in the currently built target. There is no actual verification of
+        /// the signature at this step. This is because we may not already know the signing
+        /// key.</summary>
+        /// <param name="lineEnumerator"></param>
+        /// <param name="toBeHashed"></param>
+        private bool PrepareSignatureVerification(IEnumerator lineEnumerator, byte[] toBeHashed)
+        {
+            bool result = true;
+            string hashAlgorithm = CaptureItem();
+            string identity = CaptureItem();
+            string signingKeyDigest;
+
+            if (!CaptureOptionalItem()) {
+                signingKeyDigest = identity;
+                identity = hashAlgorithm;
+                hashAlgorithm = null;
+            }
+            else { signingKeyDigest = _currentItemText; }
+            switch (hashAlgorithm) {
+                case "sha1":
+                case "sha256":
+                    break;
+                case null:
+                    hashAlgorithm = "sha1";
+                    break;
+                default:
+                    result = false;
+                    break;
+            }
+            if (CaptureOptionalItem()) {
+                ParsingError("Directory signature entry contains extra parameters.");
+            }
+            byte[] signature = FetchSignature(lineEnumerator);
+            Authority signer = _target.GetAuthority(identity);
+
+            if (null == signer) {
+                ParsingError("Found directory signature from unknown authority with identity '{0}'",
+                    identity);
+            }
+            byte[] hashValue;
+            switch (hashAlgorithm) {
+                case "sha1":
+                    hashValue = SHA1.Hash(toBeHashed);
+                    break;
+                case "sha256":
+                    throw new NotImplementedException();
+                default:
+                    WTF();
+                    return false; // Unreachable.
+            }
+            _target.AddSignatureDescriptor(
+                new ConsensusOrVote.SignatureDescriptor(signer, hashValue, signature));
             return result;
         }
 

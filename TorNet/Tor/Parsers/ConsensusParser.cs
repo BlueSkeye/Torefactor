@@ -46,13 +46,55 @@ namespace TorNet.Tor
             /// instance accordingly.</summary>
             /// <param name="consensus"></param>
             /// <param name="content"></param>
-            /// <param name="rejectInvalid">true if the consensus must be rejected
-            /// ifvalidty date eceeds current date. Notwithstanding this flag, any
+            /// <param name="rejectOutdated">true if the consensus must be rejected
+            /// ifvalidty date exceeds current date. Notwithstanding this flag, any
             /// other malformation will trigger an exception.</param>
-            internal static Consensus Parse(string content, bool rejectInvalid = true)
+            internal static Consensus ParseAndValidate(string content, bool rejectOutdated = true,
+                SignatureValidationPolicy validationPolicy = SignatureValidationPolicy.AllSignaturesMustMatch)
             {
+                if (SignatureValidationPolicy.Undefined == validationPolicy) {
+                    throw new ArgumentException();
+                }
+                bool noMatchEncountered = true;
+                List<Authority> validSigner = new List<Authority>();
                 Consensus target = new Consensus();
-                new Parser(target)._Parse(content);
+                Parser parser = new Parser(target);
+                parser._Parse(content, rejectOutdated);
+                foreach(SignatureDescriptor descriptor in target.EnumerateSignatureDescriptors()) {
+                    bool thisSignatureIsValid = descriptor.Validate(validationPolicy);
+
+                    switch (validationPolicy) {
+                        case SignatureValidationPolicy.AllSignaturesMustMatch:
+                            if (!thisSignatureIsValid) {
+                                // Note : this check is already implemented in the validator.
+                                throw new TorSecurityException();
+                            }
+                            break;
+                        case SignatureValidationPolicy.DontCare:
+                            break;
+                        case SignatureValidationPolicy.AtLeastOneSignatureMustMatch:
+                            if (thisSignatureIsValid) {
+                                noMatchEncountered = false;
+                            }
+                            break;
+                        case SignatureValidationPolicy.AtLestOneSignaturePerSignerMustMatch:
+                            if (thisSignatureIsValid) {
+                                Authority signer = descriptor.Signer;
+                                if (!validSigner.Contains(signer)) {
+                                    validSigner.Add(signer);
+                                }
+                            }
+                            break;
+                        default:
+                            parser.WTF();
+                            break;
+                    }
+                    if (   (SignatureValidationPolicy.AtLeastOneSignatureMustMatch == validationPolicy)
+                        && noMatchEncountered)
+                    {
+                        throw new TorSecurityException();
+                    }
+                }
                 return target;
             }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 using TorNet.Interop;
 
@@ -40,9 +41,17 @@ namespace TorNet.Cryptography
 
         private void get(byte[] output)
         {
-            int hash_size = 20;
-            Advapi32.CryptGetHashParam(_hash, Advapi32.HP_HASHVAL, ref output,
-                ref hash_size, 0);
+            int hashSize = output.Length;
+            IntPtr nativeBuffer = IntPtr.Zero;
+            try {
+                nativeBuffer = Marshal.AllocCoTaskMem(hashSize);
+                Advapi32.CryptGetHashParam(_hash, Advapi32.HP_HASHVAL, nativeBuffer,
+                    ref hashSize, 0);
+                Marshal.Copy(nativeBuffer, output, 0, hashSize);
+            }
+            finally {
+                if(IntPtr.Zero != nativeBuffer) { Marshal.FreeCoTaskMem(nativeBuffer); }
+            }
         }
 
         internal byte[] get()
