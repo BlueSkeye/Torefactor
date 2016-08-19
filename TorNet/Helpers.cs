@@ -2,12 +2,22 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
+using System.IO;
+using System.IO.Compression;
 using System.Threading.Tasks;
 
 namespace TorNet
 {
     internal static class Helpers
     {
+        static Helpers()
+        {
+            DecompressionTestFilePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "CompressedSample.z");
+            return;
+        }
+
         internal static bool AreEquals(byte[] x, byte[] y, int length)
         {
             return AreEquals(x, 0, y, 0, length);
@@ -39,7 +49,30 @@ namespace TorNet
         /// <param name="port"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        internal static async Task<string> HttpGet(string hostName, int port, string path)
+        internal static async Task<byte[]> HttpGetBinaryContent(string hostName, int port,
+            string path)
+        {
+            using (HttpClient client = new HttpClient() {
+                BaseAddress = new Uri(string.Format("http://{0}:{1}/", hostName, port))
+                })
+            {
+                HttpResponseMessage response = await client.GetAsync(path);
+                if (!response.IsSuccessStatusCode) {
+                    throw new ApplicationException();
+                }
+                return await response.Content.ReadAsByteArrayAsync();
+            }
+        }
+
+        /// <summary>Asynchronously retrieve an HTTP url.
+        /// WARNING : This method MUST NOT be used except for initial consensus
+        /// download.</summary>
+        /// <param name="hostName"></param>
+        /// <param name="port"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        internal static async Task<string> HttpGetStringContent(string hostName, int port,
+            string path)
         {
             using (HttpClient client = new HttpClient() {
                 BaseAddress = new Uri(string.Format("http://{0}:{1}/", hostName, port))
@@ -129,5 +162,31 @@ namespace TorNet
             lhs = rhs;
             rhs = temp;
         }
+
+        internal static byte[] Uncompress(byte[] compressedContent)
+        {
+            // ZLib format is not supported as is by managed decompression stream.
+            // We need to strip the ZLib header and footer checksum.
+            // TODO : Add some additional checks such as checksum verification and
+            // header decoding here.
+            byte[] strippedBuffer = new byte[compressedContent.Length - 6];
+            Buffer.BlockCopy(compressedContent, 2, strippedBuffer, 0, strippedBuffer.Length);
+            using (MemoryStream input = new MemoryStream(strippedBuffer)) {
+                using (MemoryStream output = new MemoryStream()) {
+                    using (DeflateStream deflater = new DeflateStream(input, CompressionMode.Decompress)) {
+                        deflater.CopyTo(output);
+                        output.Flush();
+                        return output.ToArray();
+                    }
+                }
+            }
+        }
+
+        internal static void WTF()
+        {
+            throw new InternalErrorException();
+        }
+
+        internal static readonly string DecompressionTestFilePath;
     }
 }

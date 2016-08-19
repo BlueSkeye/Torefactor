@@ -81,11 +81,13 @@ namespace TorNet.Tor
             return _onionRouterMap[identity_fingerprint];
         }
 
-        internal string get_router_consensus(string identityFingerprint)
+        internal string get_router_consensus(string identityFingerprint, bool compressed = true)
         {
             Globals.LogInfo("consensus::get_router_consensus() [identity_fingerprint: {0}]",
                 identityFingerprint);
-            return Authority.DownloadFromRandomAuthority("/tor/server/fp/" + identityFingerprint);
+            return Authority.DownloadFromRandomAuthority(
+                WellKnownUrlRetriever.GetMostRecentServerDescriptorPath(identityFingerprint, compressed),
+                compressed);
         }
 
         internal void Register(OnionRouter router)

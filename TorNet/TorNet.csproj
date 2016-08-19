@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClientNode.cs" />
+    <Compile Include="InternalErrorException.cs" />
     <Compile Include="Tor\Authority.cs" />
     <Compile Include="Tor\TorSecurityException.cs" />
     <Compile Include="Tor\ConsensusOrVote.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Tor\TorSocket.cs" />
     <Compile Include="Tor\TorStream.cs" />
     <Compile Include="Tor\TorVersion.cs" />
+    <Compile Include="Tor\WellKnownUrlRetriever.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

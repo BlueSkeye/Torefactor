@@ -8,6 +8,7 @@ using TorNet.Tor;
 
 namespace TorNet
 {
+    /// <summary>This class is the main one for clients implementations.</summary>
     public class ClientNode : IDisposable
     {
         public ClientNode()

@@ -60,8 +60,8 @@ namespace TorNet.Tor
             else if (   (0 != (options & Options.ForceDownload))
                      || (0 != (options & Options.DoNotUseCache)))
             {
-                consensusContent = Authority.DownloadFromRandomAuthority(
-                    Constants.WellKnownUrls.MostRecentV3ConsensusUrlPath);
+                consensusContent = WellKnownUrlRetriever.Retrieve(
+                    WellKnownUrlRetriever.Document.MostRecentV3Consensus);
                 if (0 == (options & Options.DoNotUseCache)) {
                     File.WriteAllText(CachedConsensusFilePath, consensusContent);
                 }
@@ -73,8 +73,8 @@ namespace TorNet.Tor
             // if the consensus is invalid, we have to download it anyway
             // TODO : Don't download if options do not allow to do so.
             if ((null == result) || (result.ValidUntilUTC < DateTime.UtcNow)) {
-                consensusContent = Authority.DownloadFromRandomAuthority(
-                    Constants.WellKnownUrls.MostRecentV3ConsensusUrlPath);
+                consensusContent = WellKnownUrlRetriever.Retrieve(
+                    WellKnownUrlRetriever.Document.MostRecentV3Consensus);
                 if (0 == (options & Options.DoNotUseCache)) {
                     File.WriteAllText(CachedConsensusFilePath, consensusContent);
                 }

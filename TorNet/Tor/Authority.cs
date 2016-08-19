@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace TorNet.Tor
@@ -35,15 +37,15 @@ namespace TorNet.Tor
             authorities.Add(
                 Create("Tonga", "bridge", IPAddress.Parse("82.94.251.203"), 80, 443)
                     .AddAdditionalPorts("4A0C CD2D DC79 9508 3D73 F5D6 6710 0C8A 5831 F16D"));
-            /* unresponsive */
-            authorities.Add(
-                Create("turtles", "27B6B5996C426270A5C95488AA5BCEB6BCC86956", IPAddress.Parse("76.73.17.194"), 9030, 9090)
-                    .AddAdditionalPorts("F397 038A DC51 3361 35E7 B80B D99C A384 4360 292B"));
+            ///* unresponsive */
+            //authorities.Add(
+            //    Create("turtles", "27B6B5996C426270A5C95488AA5BCEB6BCC86956", IPAddress.Parse("76.73.17.194"), 9030, 9090)
+            //        .AddAdditionalPorts("F397 038A DC51 3361 35E7 B80B D99C A384 4360 292B"));
 #if !PROXIED
-            /* unresponsive */
-            authorities.Add(
-                Create("gabelmoo", "ED03BB616EB2F60BEC80151114BB25CEF515B226", IPAddress.Parse("212.112.245.170"), 80, 443)
-                .AddAdditionalPorts("F204 4413 DAC2 E02E 3D6B CF47 35A1 9BCA 1DE9 7281"));
+            ///* unresponsive */
+            //authorities.Add(
+            //    Create("gabelmoo", "ED03BB616EB2F60BEC80151114BB25CEF515B226", IPAddress.Parse("212.112.245.170"), 80, 443)
+            //    .AddAdditionalPorts("F204 4413 DAC2 E02E 3D6B CF47 35A1 9BCA 1DE9 7281"));
 #endif
             /* responsive */
             authorities.Add(
@@ -58,10 +60,12 @@ namespace TorNet.Tor
                 Create("maatuska", "49015F787433103580E3B66A1707A00E60F2D15B", IPAddress.Parse("171.25.193.9"), 443, 80)
                     .AddAdditionalPorts("BD6A 8292 55CB 08E6 6FBE 7D37 4836 3586 E46B 3810"));
 #endif
-            /* unresponsive - inside */
+#if !PROXIED
+            /* ??? */
             authorities.Add(
                 Create("Faravahar", "EFCBE720AB3A82B99F9E953CD5BF50F7EEFC7B97", IPAddress.Parse("154.35.32.5"), 80, 443)
                     .AddAdditionalPorts("CF6D 0AAF B385 BE71 B8E1 11FC 5CFF 4B47 9237 33BC"));
+#endif
             KnownAuthorities = authorities.ToArray();
         }
 
@@ -104,30 +108,42 @@ namespace TorNet.Tor
             return result;
         }
 
-        internal Task<string> Download(string path, bool compressed)
+        internal Task<string> DownloadContent(string path, bool compressed)
         {
-            Task<string> result = Helpers.HttpGet(IPAddress.ToString(), DirPort, path);
+            if (!compressed) {
+                return Helpers.HttpGetStringContent(IPAddress.ToString(), DirPort, path);
+            }
+            Task<byte[]> compressedResult = Helpers.HttpGetBinaryContent(IPAddress.ToString(), DirPort, path);
 
-            if (compressed) { throw new NotImplementedException(); }
-            return result;
+            //using (FileStream trash = File.Open(Helpers.DecompressionTestFilePath, FileMode.Create, FileAccess.Write)) {
+            //    trash.Write(result.Result, 0, result.Result.Length);
+            //}
+            return Task<string>.Run<string>(delegate() {
+                return Encoding.ASCII.GetString(Helpers.Uncompress(compressedResult.Result));
+            });
         }
 
         /// <summary>Randomly select an authority in the hardccoded list and
         /// download current consensus from a well known path.</summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        internal static string DownloadFromRandomAuthority(string path, bool compressed = false)
+        internal static string DownloadFromRandomAuthority(string path, bool compressed)
         {
             Globals.LogInfo("consensus::download_from_random_authority() [path: {0}]", path);
+            return GetRandomAuthority().DownloadContent(path, compressed).Result;
+        }
+
+        internal static Authority GetRandomAuthority()
+        {
+            // TODO : Once bootstrapping occured we can widden the authority range and
+            // draw from a wider set.
             int authorityIndex;
-            using (RandomNumberGenerator randomizer = RandomNumberGenerator.Create())
-            {
+            using (RandomNumberGenerator randomizer = RandomNumberGenerator.Create()) {
                 byte[] buffer = new byte[sizeof(ulong)];
                 randomizer.GetBytes(buffer);
                 authorityIndex = (int)(buffer.ToUInt64() % (ulong)Authority.KnownAuthorities.Length);
             }
-            return Authority.KnownAuthorities[authorityIndex].Download(path + ((compressed) ? ".z" : string.Empty),
-                compressed).Result;
+            return KnownAuthorities[authorityIndex];
         }
 
         /// <summary>A collection of well known authoriies.</summary>

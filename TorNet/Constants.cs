@@ -10,11 +10,5 @@ namespace TorNet
         internal const int DH_LEN = 128;
         internal const int DH_SEC_LEN = 40;
         internal const int HASH_LEN = 20;
-
-        internal static class WellKnownUrls
-        {
-            internal const string CompressionSuffix = ".z";
-            internal const string MostRecentV3ConsensusUrlPath = "/tor/status-vote/current/consensus";
-        }
     }
 }
