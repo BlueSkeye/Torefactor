@@ -108,18 +108,19 @@ namespace TorNet.Tor
             return result;
         }
 
-        internal Task<string> DownloadContent(string path, bool compressed)
+        /// <summary></summary>
+        /// <param name="path">The path must begin with a slash.</param>
+        /// <param name="compressed">True if the compressed content must be retrieved.
+        /// The method will decompress content before returning.</param>
+        /// <returns>Always the uncompressed content.</returns>
+        internal Task<byte[]> DownloadContent(string path, bool compressed)
         {
             if (!compressed) {
-                return Helpers.HttpGetStringContent(IPAddress.ToString(), DirPort, path);
+                return Helpers.HttpGetBinaryContent(IPAddress.ToString(), DirPort, path);
             }
             Task<byte[]> compressedResult = Helpers.HttpGetBinaryContent(IPAddress.ToString(), DirPort, path);
-
-            //using (FileStream trash = File.Open(Helpers.DecompressionTestFilePath, FileMode.Create, FileAccess.Write)) {
-            //    trash.Write(result.Result, 0, result.Result.Length);
-            //}
-            return Task<string>.Run<string>(delegate() {
-                return Encoding.ASCII.GetString(Helpers.Uncompress(compressedResult.Result));
+            return Task<byte[]>.Run(delegate() {
+                return Helpers.Uncompress(compressedResult.Result);
             });
         }
 
@@ -127,10 +128,39 @@ namespace TorNet.Tor
         /// download current consensus from a well known path.</summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        internal static string DownloadFromRandomAuthority(string path, bool compressed)
+        internal static byte[] DownloadFromRandomAuthority(string path, bool compressed)
         {
             Globals.LogInfo("consensus::download_from_random_authority() [path: {0}]", path);
             return GetRandomAuthority().DownloadContent(path, compressed).Result;
+        }
+
+        /// <summary>Retrieve key certificate from this authority.</summary>
+        /// <param name="forceDownload"></param>
+        /// <returns></returns>
+        internal string GetKeyCertificate(RetrievalOptions options)
+        {
+            string cachedCertificateFilePath = CacheManager.GetKeyCertificateFilePath(this);
+            string result;
+
+            if (   (0 == (RetrievalOptions.ForceDownload & options))
+                && (0 != (RetrievalOptions.UseCache & options)))
+            {
+                if (File.Exists(cachedCertificateFilePath)) {
+                    result = File.ReadAllText(cachedCertificateFilePath);
+                }
+            }
+            else if (   (0 != (options & RetrievalOptions.ForceDownload))
+                     || (0 != (options & RetrievalOptions.DoNotUseCache)))
+            {
+                result = Encoding.ASCII.GetString(
+                    WellKnownUrlRetriever.Retrieve(
+                        WellKnownUrlRetriever.Document.KeyCertificate, this, true));
+                if (0 == (RetrievalOptions.DoNotUseCache & options)) {
+                    File.WriteAllText(cachedCertificateFilePath, result);
+                }
+                return result;
+            }
+            throw new NotImplementedException();
         }
 
         internal static Authority GetRandomAuthority()

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Net;
 using System.Text;
 
 using TorNet.Cryptography;
@@ -12,7 +10,7 @@ namespace TorNet.Tor.Parsers
     /// <summary></summary>
     /// <remarks>Parser internal errorexceptions with WTF messages denotes very
     /// severe internal logical errors.</remarks>
-    internal abstract class ConsensusAndVoteBaseParser
+    internal abstract class ConsensusAndVoteBaseParser : BaseParser<ConsensusAndVoteBaseParser.ParserState>
     {
         static ConsensusAndVoteBaseParser()
         {
@@ -43,6 +41,16 @@ namespace TorNet.Tor.Parsers
             _expectedKeywords.Add(ParserState.DirectorySignature, "directory-signature");
         }
 
+        protected override string InvalidDocumentPrefix
+        {
+            get { return _invalidDocumentPrefix; }
+        }
+
+        protected override Dictionary<ParserState, string> StateExpectations
+        {
+            get { return _expectedKeywords; }
+        }
+
         protected ConsensusAndVoteBaseParser(DocumentType type, ConsensusOrVote target)
         {
             if (null == target) { throw new ArgumentNullException(); }
@@ -61,11 +69,6 @@ namespace TorNet.Tor.Parsers
             }
         }
 
-        protected int CurrentLineNumber
-        {
-            get { return _currentLineNumber; }
-        }
-
         private string DocumentName
         {
             get {
@@ -73,79 +76,14 @@ namespace TorNet.Tor.Parsers
                     case DocumentType.Consensus:
                         return "consensus";
                     default:
-                        WTF();
+                        Helpers.WTF();
                         // unreachable.
                         return null;
                 }
             }
         }
 
-        private void AssertEndOfLine(ParserState newState, bool relaxOrdering = false,
-            bool optional = false)
-        {
-            int itemsCount = _items.Length;
-            if (itemsCount != _currentItemIndex) {
-                throw new ParsingException("{0}Extra arguments found at line {1}.",
-                    _invalidDocumentPrefix, _currentLineNumber);
-            }
-            SwitchToState(newState, relaxOrdering);
-            if (optional) { _performStandardChecks = false; }
-            return;
-        }
-
-        private void AssertExpectedKeyword(ParserState currentState, string candidate)
-        {
-            string keyword;
-
-            if (string.IsNullOrEmpty(candidate)) {
-                throw new ArgumentNullException();
-            }
-            if (!_expectedKeywords.TryGetValue(currentState, out keyword)) {
-                throw new ParsingException("Internal error : No expected keyword found for parser state {0}",
-                    currentState);
-            }
-            if (keyword != candidate) {
-                throw new ParsingException("{0}Expecting {1} keyword. Found {2].",
-                    _invalidDocumentPrefix, keyword, candidate);
-            }
-            return;
-        }
-
         protected abstract void AssertStatus(string candidate);
-
-        private string CaptureItem()
-        {
-            if (!CaptureOptionalItem()) {
-                ParsingError("Incomplete line.");
-            }
-            return _currentItemText;
-        }
-
-        private string CaptureLineAsSingleItem()
-        {
-            int totalLength = _currentLineText.Length - (_currentKeyword.Length + 1);
-            try {
-                return (0 == totalLength)
-                    ? string.Empty
-                    : _currentLineText.Substring(_currentLineText.Length - totalLength);
-            }
-            finally { _currentItemIndex = _items.Length; }
-        }
-
-        private bool CaptureOptionalItem()
-        {
-            if (_items.Length <= _currentItemIndex) {
-                return false;
-            }
-            string candidate = _items[_currentItemIndex];
-            if (string.Empty == candidate) {
-                throw new ParsingException(
-                    "Multiple consecutive spaces encountered.");
-            }
-            _currentItemText = candidate;
-            _currentItemIndex++;
-            return true;
-        }
 
         private void DoConditionalSwitchAtEndOfLine()
         {
@@ -178,211 +116,39 @@ namespace TorNet.Tor.Parsers
                 default:
                     break;
             }
-            if (ParserState.Undefined == nextState) { WTF(); }
+            if (ParserState.Undefined == nextState) { Helpers.WTF(); }
             AssertEndOfLine(nextState, relaxOrdering, optional);
             return;
-        }
-
-        private int FetchIntegerItem()
-        {
-            CaptureItem();
-            int result;
-            if (!int.TryParse(_currentItemText, out result)) {
-                ParsingError("Expected an integer. Found {0}.", _currentItemText);
-            }
-            return result;
-        }
-
-        private IPAddress FetchIPAddressItem()
-        {
-            CaptureItem();
-            IPAddress result;
-            if (!IPAddress.TryParse(_currentItemText, out result)) {
-                ParsingError("Expected an IP address. Found {0}.", _currentItemText);
-            }
-            return result;
-        }
-
-        private IPEndPoint FetchIPEndPoint()
-        {
-            bool errorEncountered = false;
-            CaptureItem();
-            try {
-                int splitAt;
-
-                if (_currentItemText.StartsWith("[")) {
-                    int closingBracketIndex = _currentItemText.IndexOf(']');
-                    if (2 > closingBracketIndex) {
-                        errorEncountered = true;
-                        return null;
-                    }
-                    splitAt = _currentItemText.IndexOf(':', closingBracketIndex);
-                }
-                else { splitAt = _currentItemText.IndexOf(':'); }
-                IPAddress ipAddress;
-                ushort port;
-
-                if (   (-1 != splitAt)
-                    && (0 != splitAt)
-                    && (_currentItemText.Length > (splitAt + 1))
-                    && IPAddress.TryParse(_currentItemText.Substring(0, splitAt), out ipAddress)
-                    && ushort.TryParse(_currentItemText.Substring(splitAt + 1), out port))
-                {
-                    return new IPEndPoint(ipAddress, port);
-                }
-                errorEncountered = true;
-                return null;
-            }
-            finally {
-                if (errorEncountered) {
-                    ParsingError("Expecting an IP endpoint. Found '{0}'", _currentItemText);
-                }
-            }
-        }
-
-        private List<KeyValuePair<string, int>> FetchKeyValuePairs()
-        {
-            List<KeyValuePair<string, int>> result = new List<KeyValuePair<string, int>>();
-            while (CaptureOptionalItem()) {
-                string parameterName;
-                string rawValue;
-                int value = 0;
-                if (!SplitPair(_currentItemText, '=', out parameterName, out rawValue)
-                    || !int.TryParse(rawValue, out value))
-                {
-                    ParsingError("Invalid parameter '{0}'.", _currentItemText);
-                    // Never reached
-                }
-                result.Add(new KeyValuePair<string, int>(parameterName, value));
-            }
-            return result;
-        }
-
-        private ushort FetchPortItem()
-        {
-            CaptureItem();
-            ushort result;
-            if (!ushort.TryParse(_currentItemText, out result)) {
-                ParsingError("Expected and unsigned short. Found {0}.", _currentItemText);
-            }
-            return result;
-        }
-
-        private byte[] FetchSignature(IEnumerator lineEnumerator)
-        {
-            StringBuilder builder = new StringBuilder();
-
-            string currentLine;
-            if (!lineEnumerator.MoveNext()) {
-                ParsingError("Incomplete signature line.");
-            }
-            _currentLineNumber++;
-            currentLine = (string)lineEnumerator.Current;
-            if (SignatureHeader != currentLine) {
-                ParsingError("Expected signature header. Found {0}", currentLine);
-            }
-            while (true) {
-                if (!lineEnumerator.MoveNext()) {
-                    ParsingError("Incomplete signature line.");
-                }
-                _currentLineNumber++;
-                currentLine = (string)lineEnumerator.Current;
-                if (SignatureFooter == currentLine) {
-                    return Base64.Decode(builder.ToString());
-                }
-                builder.Append(currentLine);
-            }
-        }
-
-        private DateTime FetchTimestampItem()
-        {
-            string candidate = CaptureItem() + " " + CaptureItem();
-            DateTime result;
-            if (!DateTime.TryParseExact(candidate, "yyyy-MM-dd HH:mm:ss", null, DateTimeStyles.None, out result)) {
-                ParsingError("Expected an horodate. Found {0}.", _currentItemText);
-            }
-            return result;
-        }
-
-        private TorVersion[] FetchVersionsListItem()
-        {
-            CaptureItem();
-            List<TorVersion> result = new List<TorVersion>();
-            string[] items = _currentItemText.Split(',');
-            foreach(string item in items) {
-                string versionString;
-                string qualifier;
-                if (!SplitPair(item, '-', out versionString, out qualifier, true)) {
-                    ParsingError("Invalid version number {0}.", item);
-                }
-                Version parsedVersion;
-                if (!Version.TryParse(versionString, out parsedVersion)) {
-                    ParsingError("Ill-formed version number '{0}'.", item);
-                }
-                result.Add(new TorVersion(parsedVersion, qualifier));
-            }
-            return result.ToArray();
-        }
-
-        private byte[] GetToBeHashedValue(string content)
-        {
-            string endOfSignedContent = _expectedKeywords[ParserState.DirectorySignature] + " ";
-            int endOfSignedContentIndex = content.IndexOf(endOfSignedContent);
-
-            if (-1 == endOfSignedContentIndex) {
-                ParsingError("Unable to find end of signed content.");
-            }
-            return Encoding.UTF8.GetBytes(
-                content.Substring(0, endOfSignedContentIndex + endOfSignedContent.Length));
         }
 
         protected bool _Parse(string content, bool rejectOutdated)
         {
             bool exceptionTriggered = false;
-            string[] lines = content.Split('\n');
-            byte[] toBeHashedContent = null;
-            IEnumerator lineEnumerator = null;
             bool outdatedEncountered = false;
             int subItemIndex;
 
             _currentState = ParserState.NetworkStatusVersion;
             _performStandardChecks = true;
+            base.SetContent(content, _expectedKeywords[ParserState.DirectorySignature]);
             try {
                 Authority currentAuthority = null;
-                lineEnumerator = lines.GetEnumerator();
-                while ((ParserState.Done != _currentState) && lineEnumerator.MoveNext()) {
-                    _currentLineText = (string)lineEnumerator.Current;
-                    _currentLineNumber++;
-                    if (string.IsNullOrWhiteSpace(_currentLineText)) {
-                        if (lineEnumerator.MoveNext()) {
-                            ParsingError("Found empty");
-                        }
-                        _currentKeyword = null;
-                        _items = new string[0];
-                        _currentItemIndex = 1;
-                    }
-                    else {
-                        _items = _currentLineText.Split(' ');
-                        _currentKeyword = _items[0];
-                        _currentItemIndex = 1;
-                    }
-
+                while ((ParserState.Done != _currentState) && base.AcquireNextLine()) {
                 StateSwitched:
                     if (_performStandardChecks) {
-                        AssertExpectedKeyword(_currentState, _currentKeyword);
+                        AssertExpectedKeyword(_currentState, CurrentKeyword);
                     }
                     else { _performStandardChecks = true; }
 
                     switch (_currentState) {
                         case ParserState.NetworkStatusVersion:
                             if (3 != FetchIntegerItem()) {
-                                ParsingError("Version '{0}' not supported.", _currentItemText);
+                                ParsingError("Version '{0}' not supported.", CurrentItemText);
                             }
                             AssertEndOfLine(ParserState.VoteStatus);
                             break;
                         case ParserState.VoteStatus:
                             CaptureItem();
-                            AssertStatus(_currentItemText);
+                            AssertStatus(CurrentItemText);
                             DoConditionalSwitchAtEndOfLine();
                             break;
                         case ParserState.ConsensusMethod:
@@ -419,7 +185,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.Package,false, true);
                             break;
                         case ParserState.Package:
-                            if ("package" != _currentKeyword) {
+                            if (_expectedKeywords[ParserState.Package] != CurrentKeyword) {
                                 SwitchToState(ParserState.KnownFlags);
                                 goto StateSwitched;
                             }
@@ -427,13 +193,13 @@ namespace TorNet.Tor.Parsers
                         case ParserState.KnownFlags:
                             List<string> knownFlags = new List<string>();
                             while (CaptureOptionalItem()) {
-                                knownFlags.Add(_currentItemText);
+                                knownFlags.Add(CurrentItemText);
                             }
                             _target.KnownFlags = knownFlags.ToArray();
                             DoConditionalSwitchAtEndOfLine();
                             break;
                         case ParserState.Params:
-                            if ("params" != _currentKeyword) {
+                            if ("params" != CurrentKeyword) {
                                 SwitchToState(ParserState.DirSource);
                                 goto StateSwitched;
                             }
@@ -441,7 +207,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.DirSource, false, false);
                             break;
                         case ParserState.DirSource:
-                            if ("dir-source" != _currentKeyword) {
+                            if ("dir-source" != CurrentKeyword) {
                                 SwitchToState(ParserState.R);
                                 goto StateSwitched;
                             }
@@ -461,7 +227,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.DirSource, true, true);
                             break;
                         case ParserState.R:
-                            if ("r" != _currentKeyword) {
+                            if ("r" != CurrentKeyword) {
                                 SwitchToState(ParserState.DirectoryFooter);
                                 goto StateSwitched;
                             }
@@ -472,7 +238,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.A, false, true);
                             break;
                         case ParserState.A:
-                            if ("a" != _currentKeyword) {
+                            if ("a" != CurrentKeyword) {
                                 SwitchToState(ParserState.S);
                                 goto StateSwitched;
                             }
@@ -480,18 +246,18 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.A, false, true);
                             break;
                         case ParserState.S:
-                            if ("s" != _currentKeyword) {
-                                ParsingError("Expecting S entry. Found '{0}'.", _currentKeyword);
+                            if ("s" != CurrentKeyword) {
+                                ParsingError("Expecting S entry. Found '{0}'.", CurrentKeyword);
                             }
                             List<string> routerFlags = new List<string>();
                             while (CaptureOptionalItem()) {
-                                routerFlags.Add(_currentItemText);
+                                routerFlags.Add(CurrentItemText);
                             }
                             _currentRouter.Flags = ParseRouterFlags(routerFlags);
                             AssertEndOfLine(ParserState.V, false, true);
                             break;
                         case ParserState.V:
-                            if ("v" != _currentKeyword) {
+                            if ("v" != CurrentKeyword) {
                                 SwitchToState(ParserState.W);
                                 goto StateSwitched;
                             }
@@ -499,7 +265,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.W);
                             break;
                         case ParserState.W:
-                            if ("w" != _currentKeyword) {
+                            if ("w" != CurrentKeyword) {
                                 SwitchToState(ParserState.P);
                                 goto StateSwitched;
                             }
@@ -531,7 +297,7 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.P);
                             break;
                         case ParserState.P:
-                            if ("p" != _currentKeyword) {
+                            if ("p" != CurrentKeyword) {
                                 // TODO : Consider a conditional switch when handling both votes
                                 // and consensus.
                                 SwitchToState(ParserState.R, true);
@@ -547,7 +313,7 @@ namespace TorNet.Tor.Parsers
                                     accepting = false;
                                     break;
                                 default:
-                                    ParsingError("Unexpected acept/reject directive : '{0}'.", _currentItemText);
+                                    ParsingError("Unexpected acept/reject directive : '{0}'.", CurrentItemText);
                                     break;
                             }
                             string[] listItems = CaptureItem().Split(',');
@@ -574,11 +340,10 @@ namespace TorNet.Tor.Parsers
                             AssertEndOfLine(ParserState.R, true, true);
                             break;
                         case ParserState.DirectoryFooter:
-                            toBeHashedContent = GetToBeHashedValue(content);
                             AssertEndOfLine(ParserState.BandwidthWeights, false, true);
                             break;
                         case ParserState.BandwidthWeights:
-                            if ("bandwidth-weights" != _currentKeyword) {
+                            if ("bandwidth-weights" != CurrentKeyword) {
                                 SwitchToState(ParserState.DirectorySignature);
                                 goto StateSwitched;
                             }
@@ -586,7 +351,7 @@ namespace TorNet.Tor.Parsers
                             SkipLineAndSwitch(ParserState.DirectorySignature);
                             break;
                         case ParserState.DirectorySignature:
-                            if ("directory-signature" != _currentKeyword) {
+                            if ("directory-signature" != CurrentKeyword) {
                                 if (!_firstSignatureFound) {
                                     ParsingError("Document not signed.");
                                 }
@@ -598,7 +363,7 @@ namespace TorNet.Tor.Parsers
                             }
                             // TODO : This must be extracted from this method and performed during
                             // a later step.
-                            if (PrepareSignatureVerification(lineEnumerator, toBeHashedContent)) {
+                            if (PrepareSignatureVerification()) {
                                 _firstSignatureFound = true;
                             }
                             AssertEndOfLine(ParserState.DirectorySignature, false, true);
@@ -622,23 +387,12 @@ namespace TorNet.Tor.Parsers
                     if (ParserState.Done != _currentState) {
                         ParsingError("Ending with unexpected parser state {0}", _currentState);
                     }
-                    if ((null != lineEnumerator) && lineEnumerator.MoveNext()) {
+                    if (base.AcquireNextLine()) {
                         ParsingError("End state reached with remaining lines.");
                     }
                 }
-                if (!outdatedEncountered && (null != _currentRouter)) { WTF(); }
+                if (!outdatedEncountered && (null != _currentRouter)) { Helpers.WTF(); }
             }
-        }
-
-        protected void ParsingError(string message, params object[] args)
-        {
-            throw new ParsingException(
-                _invalidDocumentPrefix + " line #" + _currentLineNumber.ToString() + " : " + message, args);
-        }
-
-        protected void ParserInternalError(string message, params object[] args)
-        {
-            ParsingError("Internal error - " + (message ?? ""), args);
         }
 
         private OnionRouter.StatusFlags ParseRouterFlags(ICollection<string> flagNames)
@@ -696,9 +450,7 @@ namespace TorNet.Tor.Parsers
         /// and store then in the currently built target. There is no actual verification of
         /// the signature at this step. This is because we may not already know the signing
         /// key.</summary>
-        /// <param name="lineEnumerator"></param>
-        /// <param name="toBeHashed"></param>
-        private bool PrepareSignatureVerification(IEnumerator lineEnumerator, byte[] toBeHashed)
+        private bool PrepareSignatureVerification()
         {
             bool result = true;
             string hashAlgorithm = CaptureItem();
@@ -710,7 +462,7 @@ namespace TorNet.Tor.Parsers
                 identity = hashAlgorithm;
                 hashAlgorithm = null;
             }
-            else { signingKeyDigest = _currentItemText; }
+            else { signingKeyDigest = CurrentItemText; }
             switch (hashAlgorithm) {
                 case "sha1":
                 case "sha256":
@@ -725,7 +477,7 @@ namespace TorNet.Tor.Parsers
             if (CaptureOptionalItem()) {
                 ParsingError("Directory signature entry contains extra parameters.");
             }
-            byte[] signature = FetchSignature(lineEnumerator);
+            byte[] signature = FetchSignature();
             Authority signer = _target.GetAuthority(identity);
 
             if (null == signer) {
@@ -735,12 +487,12 @@ namespace TorNet.Tor.Parsers
             byte[] hashValue;
             switch (hashAlgorithm) {
                 case "sha1":
-                    hashValue = SHA1.Hash(toBeHashed);
+                    hashValue = SHA1.Hash(base._toBeHashed);
                     break;
                 case "sha256":
                     throw new NotImplementedException();
                 default:
-                    WTF();
+                    Helpers.WTF();
                     return false; // Unreachable.
             }
             _target.AddSignatureDescriptor(
@@ -769,64 +521,20 @@ namespace TorNet.Tor.Parsers
         private void SkipLineAndSwitchToOptional(ParserState switchTo, bool relaxOrdering = false)
         {
 #if DEBUG
-            if (!_expectedKeywords.ContainsKey(switchTo)) { WTF(); }
-            if (null != _expectedKeywords[switchTo]) { WTF(); }
+            if (!_expectedKeywords.ContainsKey(switchTo)) { Helpers.WTF(); }
+            if (null != _expectedKeywords[switchTo]) { Helpers.WTF(); }
 #endif
             SkipLineAndSwitch(switchTo, relaxOrdering);
             _performStandardChecks = false;
             return;
         }
 
-        private bool SplitPair(string item, char splitter, out string key,
-            out string value, bool optional = false)
-        {
-            key = null;
-            value = null;
-            int splitIndex = item.IndexOf(splitter);
-            if ((0 == splitIndex) || (splitIndex == item.Length - 1)) {
-                return false;
-            }
-            if (!optional && (-1 == splitIndex)) { return false; }
-            key = (-1 == splitIndex)
-                ? item
-                : item.Substring(0, splitIndex);
-            value = (-1 == splitIndex)
-                ? string.Empty
-                : item.Substring(splitIndex + 1);
-            return true;
-        }
-
-        private void SwitchToState(ParserState newState, bool relaxOrdering = false)
-        {
-            if (!relaxOrdering && ((int)newState < (int)_currentState)) {
-                ParserInternalError("State switch mismatch from {0} to {1}",
-                    _currentState, newState);
-            }
-            _currentState = newState;
-            _performStandardChecks = true;
-            return;
-        }
-
-        /// <summary>Should we land here, there is a severe logical error.</summary>
-        protected void WTF()
-        {
-            ParsingError("WTF");
-        }
-
-        private const string SignatureHeader = "-----BEGIN SIGNATURE-----";
-        private const string SignatureFooter = "-----END SIGNATURE-----";
-        private int _currentItemIndex;
-        private string _currentItemText;
-        private string _currentLineText;
-        private string _currentKeyword;
-        private int _currentLineNumber;
         private OnionRouter _currentRouter;
         private ParserState _currentState;
         private DocumentType _documentType;
         private static Dictionary<ParserState, string> _expectedKeywords;
         private bool _firstSignatureFound = false;
         private string _invalidDocumentPrefix;
-        private string[] _items;
         private bool _performStandardChecks = false;
         private ConsensusOrVote _target;
 
@@ -840,7 +548,7 @@ namespace TorNet.Tor.Parsers
         /// <summary>The state value describes which element is to be handled
         /// during next loop. WARNING : Do not reorder. There is a check on some
         /// variables of this type for monotonic increasing value.</summary>
-        private enum ParserState
+        internal enum ParserState
         {
             Undefined,
             NetworkStatusVersion,

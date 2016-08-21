@@ -16,6 +16,9 @@ namespace TorNet.Tor
             switch(document) {
                 case Document.Undefined:
                     throw new ArgumentException();
+                case Document.KeyCertificate:
+                    return CurrentKeyCertificatePath +
+                        ((compresssed) ? CompressionSuffix : string.Empty);
                 case Document.MostRecentV3Consensus:
                     return MostRecentV3ConsensusUrlPath +
                         ((compresssed) ? CompressionSuffix : string.Empty);
@@ -25,23 +28,24 @@ namespace TorNet.Tor
             }
         }
 
-        internal static string Retrieve(Document document, Authority from = null,
+        internal static byte[] Retrieve(Document document, Authority from = null,
             bool compressed = true)
         {
             if (null == from) {
                 from = Authority.GetRandomAuthority();
             }
-            return Authority.DownloadFromRandomAuthority(
-                GetRelativePath(document, compressed), compressed);
+            return from.DownloadContent(GetRelativePath(document, compressed), compressed).Result;
         }
 
         internal const string CompressionSuffix = ".z";
+        private const string CurrentKeyCertificatePath = "/tor/keys/authority";
         private const string MostRecentServerDescriptorByFingerprint = "/tor/server/fp/{0}";
         internal const string MostRecentV3ConsensusUrlPath = "/tor/status-vote/current/consensus";
 
         internal enum Document
         {
             Undefined,
+            KeyCertificate,
             MostRecentV3Consensus,
         }
     }

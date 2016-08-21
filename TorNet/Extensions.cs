@@ -1,13 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+
+using TorNet.Cryptography;
 
 namespace TorNet
 {
     internal static class Extensions
     {
+        internal static T GetRandom<T>(this List<T> from)
+        {
+            if (null == from) { throw new ArgumentNullException(); }
+            if (0 == from.Count) { throw new ArgumentException(); }
+            using (Randomizer randomizer = new Randomizer(CryptoProvider.Instance)) {
+                return from[(int)(randomizer.GetUInt64() % (ulong)from.Count)];
+            }
+        }
+
         internal static bool IsEmpty<K,V>(this Dictionary<K,V> candidate)
         {
             return (0 == candidate.Count);

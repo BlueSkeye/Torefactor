@@ -13,7 +13,7 @@ namespace TorNet
     {
         public ClientNode()
         {
-            _consensus = Consensus.Fetch(Consensus.Options.DoNotUseCache);
+            _consensus = Consensus.Fetch(RetrievalOptions.DoNotUseCache);
         }
 
         ~ClientNode()
@@ -34,7 +34,7 @@ namespace TorNet
 
         public void ExtendTo(string onion_router_name)
         {
-            OnionRouter router = _consensus.get_onion_router_by_name(onion_router_name);
+            OnionRouter router = _consensus.GetRouter(onion_router_name);
 
             if (null == _circuit) {
                 _socket.Connect(router);

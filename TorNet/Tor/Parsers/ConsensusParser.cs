@@ -86,7 +86,7 @@ namespace TorNet.Tor
                             }
                             break;
                         default:
-                            parser.WTF();
+                            Helpers.WTF();
                             break;
                     }
                     if (   (SignatureValidationPolicy.AtLeastOneSignatureMustMatch == validationPolicy)
@@ -116,97 +116,11 @@ namespace TorNet.Tor
                 return result;
             }
 
-            //internal void Parse(Consensus consensus, string content, bool rejectInvalid = true)
-            //{
-            //    if (null == consensus) { throw new ArgumentNullException(); }
-            //    _target = consensus;
-            //    base.Parse(content, rejectInvalid);
-            //    throw new NotImplementedException();
-
-            //    string[] lines = content.Split('\n');
-            //    DocumentLocation currentLocation = DocumentLocation.Preamble;
-            //    OnionRouter current_router = null;
-
-            //    try {
-            //        foreach (string line in lines) {
-            //            string[] currentLineItems = line.Split(' ');
-            //            string currentLineKeyword = currentLineItems[0];
-
-            //            // move the location if we are at the router status entries.
-            //            if ("r" == currentLineKeyword) {
-            //                currentLocation = DocumentLocation.RouterStatusEntry;
-            //            }
-            //            else if ("directory-footer" == currentLineKeyword) {
-            //                currentLocation = DocumentLocation.DirectoryFooter;
-            //            }
-
-            //            switch (currentLocation) {
-            //                case DocumentLocation.Preamble:
-            //                    if ("valid-until" == currentLineKeyword) {
-            //                        consensus._validUntilUTC =
-            //                            Helpers.ParseTime(currentLineItems[1] + " " + currentLineItems[2]);
-
-            //                        if (rejectInvalid && (DateTime.UtcNow > consensus._validUntilUTC)) {
-            //                            throw new ParsingException("Invalid consensus : date exceeded {0}",
-            //                                consensus._validUntilUTC);
-            //                        }
-            //                    }
-            //                    break;
-            //                case DocumentLocation.RouterStatusEntry:
-            //                    // check if the control word has at least one letter.
-            //                    if (1 > currentLineKeyword.Length) { break; }
-            //                    Globals.Assert(1 == currentLineKeyword.Length);
-
-            //                    switch (currentLineKeyword) {
-            //                        case "r":
-            //                            // router.
-            //                            if (!Enum.IsDefined(typeof(RouterStatusProperty), (RouterStatusProperty)currentLineItems.Length)) {
-            //                                // next line.
-            //                                continue;
-            //                            }
-            //                            string identityFingerprint = Base16.Encode(
-            //                                Base64.Decode(currentLineItems[(int)RouterStatusProperty.Identity]));
-            //                            current_router = new OnionRouter(consensus,
-            //                                currentLineItems[(int)RouterStatusProperty.Nickname],
-            //                                currentLineItems[(int)RouterStatusProperty.IPAddress],
-            //                                (ushort)(int.Parse(currentLineItems[(int)RouterStatusProperty.ORPort])),
-            //                                (ushort)(int.Parse(currentLineItems[(int)RouterStatusProperty.DirectoryPort])),
-            //                                identityFingerprint);
-            //                            consensus._onionRouterMap.Add(identityFingerprint, current_router);
-            //                            break;
-            //                        case "s":
-            //                            // flags.
-            //                            if (null != current_router) {
-            //                                current_router.Flags = string_to_status_flags(line.Split(' '));
-            //                            }
-            //                            break;
-            //                    }
-            //                    break;
-            //                case DocumentLocation.DirectoryFooter:
-            //                    // TODO : The footer is ignored in the base implementation.
-            //                    // This is unacceptable because it contains the authoritative directories
-            //                    // signatures. The consensus may be retrieved using a simple HTTP request
-            //                    // that is easily forged.
-
-            //                    // ignore directory footer.
-            //                    currentLocation = DocumentLocation.Done;
-            //                    return;
-            //            }
-            //        }
-            //    }
-            //    finally {
-            //        if (DocumentLocation.Done != currentLocation) {
-            //            throw new ParsingException("Invalid consensus ; last known state {0}",
-            //                currentLocation);
-            //        }
-            //    }
-            //}
-
             protected override void SetTarget(ConsensusOrVote candidate)
             {
                 Consensus consensus = candidate as Consensus;
-                if (null != _target) { WTF(); }
-                if (null == consensus) { base.WTF(); }
+                if (null != _target) { Helpers.WTF(); }
+                if (null == consensus) { Helpers.WTF(); }
                 _target = consensus;
                 return;
             }

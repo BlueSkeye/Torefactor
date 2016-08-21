@@ -53,7 +53,7 @@ namespace TorNet
             string path)
         {
             using (HttpClient client = new HttpClient() {
-                BaseAddress = new Uri(string.Format("http://{0}:{1}/", hostName, port))
+                BaseAddress = new Uri(string.Format("http://{0}:{1}", hostName, port))
                 })
             {
                 HttpResponseMessage response = await client.GetAsync(path);

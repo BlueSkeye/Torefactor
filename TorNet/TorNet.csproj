@@ -40,9 +40,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CacheManager.cs" />
     <Compile Include="ClientNode.cs" />
     <Compile Include="InternalErrorException.cs" />
     <Compile Include="Tor\Authority.cs" />
+    <Compile Include="Tor\KeyCertificate.cs" />
+    <Compile Include="Tor\Parsers\BaseParser.cs" />
+    <Compile Include="Tor\Parsers\KeyCertificateParser.cs" />
+    <Compile Include="Tor\RetrievalOptions.cs" />
     <Compile Include="Tor\TorSecurityException.cs" />
     <Compile Include="Tor\ConsensusOrVote.cs" />
     <Compile Include="Constants.cs" />

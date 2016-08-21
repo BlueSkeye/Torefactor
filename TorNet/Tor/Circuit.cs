@@ -95,14 +95,14 @@ namespace TorNet.Tor
             return stream;
         }
 
-        internal void Create(OnionRouter first_onion_router)
+        internal void Create(OnionRouter firstRouter)
         {
-            Logger.Debug("circuit::create() [or: {0}, state: creating]", first_onion_router.Name);
+            Logger.Debug("circuit::create() [or: {0}, state: creating]", firstRouter.Name);
             this.State = CircuitState.creating;
-            _extend_node = CreateCircuitNode(first_onion_router);
+            _extend_node = CreateCircuitNode(firstRouter);
             SendCell(new Cell(_circuit_id, CellCommand.create, _extend_node.CreateOnionSkin()));
             WaitForState(CircuitState.ready);
-            Logger.Debug("circuit::create() [or: {0}, state: created]", first_onion_router.Name);
+            Logger.Debug("circuit::create() [or: {0}, state: created]", firstRouter.Name);
         }
 
         internal void Destroy()

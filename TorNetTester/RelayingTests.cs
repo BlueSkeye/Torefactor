@@ -5,15 +5,14 @@ using TorNet.Tor;
 namespace TorNetTester
 {
     [TestClass]
-    public class ConsensusTests
+    public class RelayingTests
     {
-        public ConsensusTests()
+        public RelayingTests()
         {
         }
 
         public TestContext TestContext { get; set; }
 
-        #region Attributs de tests supplémentaires
         // [ClassInitialize()]
         // public static void MyClassInitialize(TestContext testContext) { }
         //
@@ -25,23 +24,16 @@ namespace TorNetTester
         //
         // [TestCleanup()]
         // public void MyTestCleanup() { }
-        //
-        #endregion
 
-        /// <summary>Fetch consensus ignoring cache.</summary>
         [TestMethod]
-        public void DownloadConsensus()
+        public void BuildOneHopRelay()
         {
-            Consensus consensus = Consensus.Fetch(RetrievalOptions.ForceDownload);
-            return;
-        }
-
-        /// <summary>Buld consensus from cached value.</summary>
-        [TestMethod]
-        public void BuildConsensusFromCache()
-        {
-            Consensus consensus = Consensus.Fetch(RetrievalOptions.UseCache);
-            return;
+            // Retrieve current consensus either from cache or from the network.
+            Consensus consensus = Consensus.Fetch(RetrievalOptions.None);
+            TorSocket socket = new TorSocket();
+            using (Circuit circuit = new Circuit(socket)) {
+                circuit.Create(consensus.GetRandomRouter());
+            }
         }
     }
 }

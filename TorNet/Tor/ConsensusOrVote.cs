@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace TorNet.Tor
 {
@@ -85,9 +86,10 @@ namespace TorNet.Tor
         {
             Globals.LogInfo("consensus::get_router_consensus() [identity_fingerprint: {0}]",
                 identityFingerprint);
-            return Authority.DownloadFromRandomAuthority(
-                WellKnownUrlRetriever.GetMostRecentServerDescriptorPath(identityFingerprint, compressed),
-                compressed);
+            return Encoding.ASCII.GetString(
+                Authority.DownloadFromRandomAuthority(
+                    WellKnownUrlRetriever.GetMostRecentServerDescriptorPath(identityFingerprint, compressed),
+                    compressed));
         }
 
         internal void Register(OnionRouter router)

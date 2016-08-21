@@ -1,12 +1,29 @@
-﻿using TorNet.Interop;
+﻿using System;
+using TorNet.Interop;
 
 namespace TorNet.Cryptography
 {
-    internal class Randomizer
+    internal class Randomizer : IDisposable
     {
-        internal Randomizer(CryptoProvider crypto_provider)
+        internal Randomizer(CryptoProvider provider)
         {
-            _provider = crypto_provider;
+            _provider = provider;
+        }
+
+        ~Randomizer()
+        {
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing) { GC.SuppressFinalize(this); }
+            return;
         }
 
     //    internal get_random<T>()
@@ -37,6 +54,18 @@ namespace TorNet.Cryptography
         internal void get_random_bytes(byte[] output)
         {
             Advapi32.CryptGenRandom(_provider.Handle, output.Length, output);
+        }
+
+        internal ulong GetUInt64()
+        {
+            byte[] rawData = new byte[sizeof(ulong)];
+            get_random_bytes(rawData);
+            ulong result = 0;
+            for(int index = 0; index < sizeof(ulong); index++) {
+                result *= 256;
+                result += rawData[index];
+            }
+            return result;
         }
 
         private CryptoProvider _provider;
