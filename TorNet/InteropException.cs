@@ -17,6 +17,8 @@ namespace TorNet
             return;
         }
 
+        // TODO : Might be inaccurate. Retrieval might be performed much later
+        // than original error.
         private static int LastWindowsError
         {
             get { return Marshal.GetLastWin32Error(); }

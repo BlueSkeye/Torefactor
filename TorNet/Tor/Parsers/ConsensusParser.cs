@@ -50,9 +50,9 @@ namespace TorNet.Tor
             /// ifvalidty date exceeds current date. Notwithstanding this flag, any
             /// other malformation will trigger an exception.</param>
             internal static Consensus ParseAndValidate(string content, bool rejectOutdated = true,
-                SignatureValidationPolicy validationPolicy = SignatureValidationPolicy.AllSignaturesMustMatch)
+                SignatureDescriptor.ValidationPolicy validationPolicy = SignatureDescriptor.ValidationPolicy.AllSignaturesMustMatch)
             {
-                if (SignatureValidationPolicy.Undefined == validationPolicy) {
+                if (SignatureDescriptor.ValidationPolicy.Undefined == validationPolicy) {
                     throw new ArgumentException();
                 }
                 bool noMatchEncountered = true;
@@ -64,20 +64,20 @@ namespace TorNet.Tor
                     bool thisSignatureIsValid = descriptor.Validate(validationPolicy);
 
                     switch (validationPolicy) {
-                        case SignatureValidationPolicy.AllSignaturesMustMatch:
+                        case SignatureDescriptor.ValidationPolicy.AllSignaturesMustMatch:
                             if (!thisSignatureIsValid) {
                                 // Note : this check is already implemented in the validator.
                                 throw new TorSecurityException();
                             }
                             break;
-                        case SignatureValidationPolicy.DontCare:
+                        case SignatureDescriptor.ValidationPolicy.DontCare:
                             break;
-                        case SignatureValidationPolicy.AtLeastOneSignatureMustMatch:
+                        case SignatureDescriptor.ValidationPolicy.AtLeastOneSignatureMustMatch:
                             if (thisSignatureIsValid) {
                                 noMatchEncountered = false;
                             }
                             break;
-                        case SignatureValidationPolicy.AtLestOneSignaturePerSignerMustMatch:
+                        case SignatureDescriptor.ValidationPolicy.AtLeastOneSignaturePerSignerMustMatch:
                             if (thisSignatureIsValid) {
                                 Authority signer = descriptor.Signer;
                                 if (!validSigner.Contains(signer)) {
@@ -89,7 +89,7 @@ namespace TorNet.Tor
                             Helpers.WTF();
                             break;
                     }
-                    if (   (SignatureValidationPolicy.AtLeastOneSignatureMustMatch == validationPolicy)
+                    if (   (SignatureDescriptor.ValidationPolicy.AtLeastOneSignatureMustMatch == validationPolicy)
                         && noMatchEncountered)
                     {
                         throw new TorSecurityException();

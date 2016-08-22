@@ -24,41 +24,9 @@ namespace TorNet.Cryptography
             destroy();
         }
 
-        internal void init()
-        {
-            Advapi32.CryptCreateHash(_provider.Handle, Advapi32.CALG_SHA1, IntPtr.Zero, 0, out _hash);
-        }
-
         private void destroy()
         {
             Advapi32.CryptDestroyHash(_hash);
-        }
-
-        internal void Update(byte[] input)
-        {
-            bool result = Advapi32.CryptHashData(_hash, input, input.Length, 0);
-        }
-
-        private void get(byte[] output)
-        {
-            int hashSize = output.Length;
-            IntPtr nativeBuffer = IntPtr.Zero;
-            try {
-                nativeBuffer = Marshal.AllocCoTaskMem(hashSize);
-                Advapi32.CryptGetHashParam(_hash, Advapi32.HP_HASHVAL, nativeBuffer,
-                    ref hashSize, 0);
-                Marshal.Copy(nativeBuffer, output, 0, hashSize);
-            }
-            finally {
-                if(IntPtr.Zero != nativeBuffer) { Marshal.FreeCoTaskMem(nativeBuffer); }
-            }
-        }
-
-        internal byte[] get()
-        {
-            byte[] result = new byte[20];
-            get(result);
-            return result;
         }
 
         internal SHA1 Duplicate()
@@ -71,11 +39,54 @@ namespace TorNet.Cryptography
             Advapi32.CryptDuplicateHash(other._hash, IntPtr.Zero, 0, out _hash);
         }
 
+        internal byte[] GetHash()
+        {
+            byte[] result = new byte[20];
+            GetHash(result);
+            return result;
+        }
+
+        private void GetHash(byte[] into)
+        {
+            int hashSize = into.Length;
+            IntPtr nativeBuffer = IntPtr.Zero;
+            try {
+                nativeBuffer = Marshal.AllocCoTaskMem(hashSize);
+                if (!Advapi32.CryptGetHashParam(_hash, Advapi32.HP_HASHVAL, nativeBuffer,
+                    ref hashSize, 0))
+                {
+                    throw new CryptographyException((WinErrors)Marshal.GetLastWin32Error());
+                }
+                Marshal.Copy(nativeBuffer, into, 0, hashSize);
+            }
+            finally {
+                if(IntPtr.Zero != nativeBuffer) { Marshal.FreeCoTaskMem(nativeBuffer); }
+            }
+        }
+
         internal static byte[] Hash(byte[] input)
         {
-            SHA1 md = CryptoProvider.Instance.CreateSha1();
-            md.Update(input);
-            return md.get();
+            SHA1 hasher = CryptoProvider.Instance.CreateSha1();
+            hasher.Update(input);
+            return hasher.GetHash();
+        }
+
+        internal static byte[] Hash(byte[] input, out IntPtr hHasher)
+        {
+            SHA1 hasher = CryptoProvider.Instance.CreateSha1();
+            hasher.Update(input);
+            hHasher = hasher._hash;
+            return hasher.GetHash();
+        }
+
+        internal void init()
+        {
+            Advapi32.CryptCreateHash(_provider.Handle, Advapi32.CALG_SHA1, IntPtr.Zero, 0, out _hash);
+        }
+
+        internal void Update(byte[] input)
+        {
+            bool result = Advapi32.CryptHashData(_hash, input, input.Length, 0);
         }
 
         private CryptoProvider _provider;

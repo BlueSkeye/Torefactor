@@ -42,12 +42,19 @@
   <ItemGroup>
     <Compile Include="CacheManager.cs" />
     <Compile Include="ClientNode.cs" />
+    <Compile Include="Cryptography\CryptographyException.cs" />
     <Compile Include="InternalErrorException.cs" />
+    <Compile Include="Interop\CertificateEncodingType.cs" />
+    <Compile Include="Interop\InteropHelpers.cs" />
+    <Compile Include="Interop\Kernel32.cs" />
     <Compile Include="Tor\Authority.cs" />
     <Compile Include="Tor\KeyCertificate.cs" />
     <Compile Include="Tor\Parsers\BaseParser.cs" />
+    <Compile Include="Tor\Parsers\ItemDescriptor.cs" />
+    <Compile Include="Tor\Parsers\ItemMultiplicity.cs" />
     <Compile Include="Tor\Parsers\KeyCertificateParser.cs" />
     <Compile Include="Tor\RetrievalOptions.cs" />
+    <Compile Include="Tor\SignatureDescriptor.cs" />
     <Compile Include="Tor\TorSecurityException.cs" />
     <Compile Include="Tor\ConsensusOrVote.cs" />
     <Compile Include="Constants.cs" />

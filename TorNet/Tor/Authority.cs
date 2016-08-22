@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+
+using TorNet.Tor.Parsers;
 
 namespace TorNet.Tor
 {
@@ -137,30 +138,31 @@ namespace TorNet.Tor
         /// <summary>Retrieve key certificate from this authority.</summary>
         /// <param name="forceDownload"></param>
         /// <returns></returns>
-        internal string GetKeyCertificate(RetrievalOptions options)
+        internal KeyCertificate GetKeyCertificate(RetrievalOptions options)
         {
             string cachedCertificateFilePath = CacheManager.GetKeyCertificateFilePath(this);
-            string result;
+            string certificateText = null;
 
             if (   (0 == (RetrievalOptions.ForceDownload & options))
                 && (0 != (RetrievalOptions.UseCache & options)))
             {
                 if (File.Exists(cachedCertificateFilePath)) {
-                    result = File.ReadAllText(cachedCertificateFilePath);
+                    certificateText = File.ReadAllText(cachedCertificateFilePath);
                 }
             }
-            else if (   (0 != (options & RetrievalOptions.ForceDownload))
-                     || (0 != (options & RetrievalOptions.DoNotUseCache)))
-            {
-                result = Encoding.ASCII.GetString(
+            if (null == certificateText) {
+                certificateText = Encoding.ASCII.GetString(
                     WellKnownUrlRetriever.Retrieve(
                         WellKnownUrlRetriever.Document.KeyCertificate, this, true));
                 if (0 == (RetrievalOptions.DoNotUseCache & options)) {
-                    File.WriteAllText(cachedCertificateFilePath, result);
+                    File.WriteAllText(cachedCertificateFilePath, certificateText);
                 }
-                return result;
             }
-            throw new NotImplementedException();
+            // Should the key certificate not be found, we expect the above code to throw
+            // an exception. TODO : verify this expectation.
+            KeyCertificate result = new KeyCertificateParser().Parse(certificateText);
+            result.Verify(this);
+            return result;
         }
 
         internal static Authority GetRandomAuthority()

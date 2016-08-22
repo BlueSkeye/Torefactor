@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using TorNet.Cryptography;
 
 namespace TorNet.Tor.Parsers
 {
@@ -10,20 +9,39 @@ namespace TorNet.Tor.Parsers
     {
         static KeyCertificateParser()
         {
-            _expectedKeywords = new Dictionary<ParserState, string>();
-            _expectedKeywords.Add(ParserState.KeyCertificateVersion, "dir-key-certificate-version");
-            _expectedKeywords.Add(ParserState.Address, "dir-address");
-            _expectedKeywords.Add(ParserState.Fingerprint, "fingerprint");
-            _expectedKeywords.Add(ParserState.IdentityKey, "dir-identity-key");
-            _expectedKeywords.Add(ParserState.Published, "dir-key-published");
-            _expectedKeywords.Add(ParserState.Expires, "dir-key-expires");
-            _expectedKeywords.Add(ParserState.SigningKey, "dir-signing-key");
-            _expectedKeywords.Add(ParserState.CrossCertificate, "dir-key-crosscert");
-            _expectedKeywords.Add(ParserState.Certification, "dir-key-certification");
+            _expectedKeywords = new Dictionary<string, ItemDescriptor<ParserState>>();
+            _expectedKeywords.Add("dir-key-certificate-version",
+                new ItemDescriptor<ParserState>(ParserState.KeyCertificateVersion,
+                    ItemMultiplicity.AtStartExactlyOnce));
+            _expectedKeywords.Add("dir-address",
+                new ItemDescriptor<ParserState>(ParserState.Address,
+                    ItemMultiplicity.AtMotOnce));
+            _expectedKeywords.Add("fingerprint",
+                new ItemDescriptor<ParserState>(ParserState.Fingerprint,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-identity-key",
+                new ItemDescriptor<ParserState>(ParserState.IdentityKey,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-key-published",
+                new ItemDescriptor<ParserState>(ParserState.Published,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-key-expires",
+                new ItemDescriptor<ParserState>(ParserState.Expires,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-signing-key",
+                new ItemDescriptor<ParserState>(ParserState.SigningKey,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-key-crosscert",
+                new ItemDescriptor<ParserState>(ParserState.CrossCertificate,
+                    ItemMultiplicity.ExactlyOnce));
+            _expectedKeywords.Add("dir-key-certification",
+                new ItemDescriptor<ParserState>(ParserState.Certification,
+                    ItemMultiplicity.AtEndExactlyOnce));
         }
 
         internal KeyCertificateParser()
         {
+            return;
         }
 
         protected override string InvalidDocumentPrefix
@@ -31,7 +49,7 @@ namespace TorNet.Tor.Parsers
             get { return "Invalid key certificate document "; }
         }
 
-        protected override Dictionary<ParserState, string> StateExpectations
+        protected override Dictionary<string, ItemDescriptor<ParserState>> StateExpectations
         {
             get { return _expectedKeywords; }
         }
@@ -39,11 +57,12 @@ namespace TorNet.Tor.Parsers
         internal KeyCertificate Parse(string content)
         {
             bool exceptionTriggered = false;
-            KeyCertificate target = new KeyCertificate();
+            KeyCertificate result = new KeyCertificate();
 
             _currentState = ParserState.KeyCertificateVersion;
             base.SetContent(content, _expectedKeywords[ParserState.Certification]);
             try {
+                _performStandardChecks = true;
                 while ((ParserState.Done != _currentState) && base.AcquireNextLine()) {
                 StateSwitched:
                     if (_performStandardChecks) {
@@ -63,31 +82,43 @@ namespace TorNet.Tor.Parsers
                                 SwitchToState(ParserState.Fingerprint);
                                 goto StateSwitched;
                             }
-                            target.EndPoint = FetchIPEndPoint();
+                            result.EndPoint = FetchIPEndPoint();
                             AssertEndOfLine(ParserState.Fingerprint);
                             break;
                         case ParserState.Fingerprint:
-                            target.Fingerprint = FetchHexadecimalEncodedString();
+                            result.Fingerprint = FetchHexadecimalEncodedString();
                             AssertEndOfLine(ParserState.Published);
                             break;
                         case ParserState.Published:
-                            target.Published = FetchTimestampItem();
+                            result.Published = FetchTimestampItem();
                             AssertEndOfLine(ParserState.Expires);
                             break;
                         case ParserState.Expires:
-                            target.Expires = FetchTimestampItem();
+                            result.Expires = FetchTimestampItem();
+                            AssertEndOfLine(ParserState.IdentityKey);
+                            break;
+                        case ParserState.IdentityKey:
+                            result.IdentityKey = FetchRsaPublicKey();
                             AssertEndOfLine(ParserState.SigningKey);
                             break;
                         case ParserState.SigningKey:
-                            target.SigningKey = FetchRsaPublicKey();
+                            result.SigningKey = FetchRsaPublicKey();
                             AssertEndOfLine(ParserState.CrossCertificate);
                             break;
                         case ParserState.CrossCertificate:
-                            target.CrossSignature = FetchSignature(true);
+                            result.CrossSignature = FetchSignature(true);
                             AssertEndOfLine(ParserState.Certification);
                             break;
                         case ParserState.Certification:
-                            throw new NotImplementedException();
+                            // TODO : This must be extracted from this method and performed during
+                            // a later step.
+                            if (CaptureOptionalItem()) {
+                                ParsingError("Key certificate signature entry contains extra parameters.");
+                            }
+                            result.Signature = FetchSignature();
+                            AssertEndOfLine(ParserState.Done);
+                            result.ToBeHashed = base._toBeHashed;
+                            break;
                         default:
                             throw new ParsingException("Internal error : unexpected state {0}",
                                 _currentState);
@@ -120,8 +151,7 @@ namespace TorNet.Tor.Parsers
             ParsingError("WTF");
         }
 
-        private ParserState _currentState;
-        private static Dictionary<ParserState, string> _expectedKeywords;
+        private static Dictionary<string, ItemDescriptor<ParserState>> _expectedKeywords;
 
         /// <summary>The state value describes which element is to be handled
         /// during next loop. WARNING : Do not reorder. There is a check on some
@@ -132,9 +162,9 @@ namespace TorNet.Tor.Parsers
             KeyCertificateVersion,
             Address,
             Fingerprint,
-            IdentityKey,
             Published,
             Expires,
+            IdentityKey,
             SigningKey,
             CrossCertificate,
             Certification,

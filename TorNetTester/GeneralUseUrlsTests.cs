@@ -45,9 +45,8 @@ namespace TorNetTester
         [TestMethod]
         public void RetrieveKeyCertificate()
         {
-            string rawCertificateContent =
-                _targetAuthority.GetKeyCertificate(
-                    RetrievalOptions.UseCache | RetrievalOptions.ForceDownload);
+            KeyCertificate certificate =
+                _targetAuthority.GetKeyCertificate(RetrievalOptions.UseCache);
             return;
         }
 

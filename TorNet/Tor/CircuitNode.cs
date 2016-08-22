@@ -189,7 +189,7 @@ namespace TorNet.Tor
 
                     // update digest field in the payload
                     _forward_digest.Update(relay_payload_bytes);
-                    byte[] digest = _forward_digest.Duplicate().get();
+                    byte[] digest = _forward_digest.Duplicate().GetHash();
                     Buffer.BlockCopy(digest, 0, relay_payload_bytes, 5, 4);
                 }
                 else {
@@ -220,7 +220,7 @@ namespace TorNet.Tor
                     Buffer.BlockCopy(cell.Payload, 5, payload_digest, 0, payload_digest.Length);
                     SHA1 backward_digest_clone = _backward_digest.Duplicate();
                     backward_digest_clone.Update(payload_without_digest);
-                    byte[] digest = backward_digest_clone.get();
+                    byte[] digest = backward_digest_clone.GetHash();
 
                     if (Helpers.AreEquals(payload_digest, digest, 4)) {
                         _backward_digest.Update(payload_without_digest);

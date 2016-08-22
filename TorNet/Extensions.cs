@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 using TorNet.Cryptography;
@@ -8,6 +9,28 @@ namespace TorNet
 {
     internal static class Extensions
     {
+        internal static byte[] DecodeHexadecimalEncodedString(this string data, bool throwOnError = true)
+        {
+            bool errorEncountered = false;
+
+            if (null == data) { throw new ArgumentNullException(); }
+            if (0 == (data.Length % 2)) {
+                int bytesCount = data.Length / 2;
+                byte[] result = new byte[bytesCount];
+                for(int index = 0; index < bytesCount; index++) {
+                    byte extractedByte;
+                    if (!byte.TryParse(data.Substring(2 * index, 2), NumberStyles.AllowHexSpecifier, null, out extractedByte)) {
+                        errorEncountered = true;
+                        break;
+                    }
+                    result[index] = extractedByte;
+                }
+                if (!errorEncountered) { return result; }
+            }
+            if (!throwOnError) { return null; }
+            throw new ParsingException("Expecting an hexadcimal encoded string. Found '{0}'.", data);
+        }
+
         internal static T GetRandom<T>(this List<T> from)
         {
             if (null == from) { throw new ArgumentNullException(); }

@@ -18,6 +18,11 @@ namespace TorNet
             return;
         }
 
+        internal static bool AreEquals(byte[] x, byte[] y)
+        {
+            return (x.Length == y.Length) && AreEquals(x, y, x.Length);
+        }
+
         internal static bool AreEquals(byte[] x, byte[] y, int length)
         {
             return AreEquals(x, 0, y, 0, length);

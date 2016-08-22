@@ -76,7 +76,14 @@ namespace TorNet.Interop
             [In] int dwFlags,
             [Out] out IntPtr /* HCRYPTKEY */ phKey);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, SetLastError = true)]
+        internal static extern bool CryptImportPublicKeyInfo(
+            [In] IntPtr /* HCRYPTPROV */ hCryptProv,
+            [In] CertificateEncodingType dwCertEncodingType,
+            [In] IntPtr /* PCERT_PUBLIC_KEY_INFO */ pInfo,
+            [Out] out IntPtr /* HCRYPTKEY */ phKey);
+
+        [DllImport(DllName, SetLastError = true)]
         internal static extern bool CryptSetKeyParam(
             [In] IntPtr /* HCRYPTKEY */ hKey,
             [In] int dwParam,

@@ -495,8 +495,7 @@ namespace TorNet.Tor.Parsers
                     Helpers.WTF();
                     return false; // Unreachable.
             }
-            _target.AddSignatureDescriptor(
-                new ConsensusOrVote.SignatureDescriptor(signer, hashValue, signature));
+            _target.AddSignatureDescriptor(new SignatureDescriptor(signer, hashValue, signature));
             return result;
         }
 
@@ -530,12 +529,10 @@ namespace TorNet.Tor.Parsers
         }
 
         private OnionRouter _currentRouter;
-        private ParserState _currentState;
         private DocumentType _documentType;
         private static Dictionary<ParserState, string> _expectedKeywords;
         private bool _firstSignatureFound = false;
         private string _invalidDocumentPrefix;
-        private bool _performStandardChecks = false;
         private ConsensusOrVote _target;
 
         protected enum DocumentType

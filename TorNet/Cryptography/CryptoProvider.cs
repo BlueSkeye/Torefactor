@@ -1,10 +1,10 @@
 ﻿using System;
-
+using System.Runtime.InteropServices;
 using TorNet.Interop;
 
 namespace TorNet.Cryptography
 {
-    internal class CryptoProvider
+    internal class CryptoProvider : IDisposable
     {
         private CryptoProvider()
         {
@@ -14,7 +14,7 @@ namespace TorNet.Cryptography
 
         ~CryptoProvider()
         {
-            destroy();
+            Dispose(false);
         }
 
         internal static CryptoProvider Instance
@@ -29,8 +29,14 @@ namespace TorNet.Cryptography
                 Advapi32.ContextCreationFlags.VerifyContect);
         }
 
-        private void destroy()
+        public void Dispose()
         {
+            Dispose(true);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing) { GC.SuppressFinalize(this); }
             Advapi32.CryptReleaseContext(_providerHandle, 0);
             _providerHandle = IntPtr.Zero;
             return;
@@ -59,6 +65,37 @@ namespace TorNet.Cryptography
         internal Randomizer CreateRandom()
         {
             return new Randomizer(this);
+        }
+
+        internal static IntPtr ImportRsaPublicKey(byte[] rawData)
+        {
+            CryptoProvider provider = new CryptoProvider();
+            IntPtr nativeStructure = IntPtr.Zero;
+            int nativeStructureSize = 0;
+            try {
+                if (!Advapi32.CryptDecodeObjectEx(CertificateEncodingType.X509Asn,
+                    InteropHelpers.GetWellKnownOIDPointer(InteropHelpers.WellKnownOIDs.X509PublicKeyInfo),
+                    rawData, rawData.Length, Advapi32.EncodingFlags.AllocateMemory, IntPtr.Zero,
+                    ref nativeStructure, ref nativeStructureSize))
+                {
+                    throw new CryptographyException((WinErrors)(uint)Marshal.GetLastWin32Error());
+                }
+                IntPtr result = IntPtr.Zero;
+                if (!Crypt32.CryptImportPublicKeyInfo(provider.Handle, CertificateEncodingType.X509Asn,
+                    nativeStructure, out result))
+                {
+                    throw new CryptographyException((WinErrors)(uint)Marshal.GetLastWin32Error());
+                }
+                return result;
+            }
+            finally {
+                if (IntPtr.Zero != nativeStructure) {
+                    if (IntPtr.Zero != Kernel32.LocalFree(nativeStructure)) {
+                        throw new InteropException(Marshal.GetLastWin32Error());
+                    }
+                }
+                provider.Dispose();
+            }
         }
 
         internal static CryptoProvider _instance = new CryptoProvider();

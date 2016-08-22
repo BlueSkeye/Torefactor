@@ -19,7 +19,7 @@ namespace TorNet.Tor.Parsers
         protected int CurrentLineNumber { get; private set; }
 
         protected abstract string InvalidDocumentPrefix { get; }
-        protected abstract Dictionary<PS, string> StateExpectations { get; }
+        protected abstract Dictionary<string, ItemDescriptor<PS>> StateExpectations { get; }
 
         protected bool AcquireNextLine()
         {
@@ -58,6 +58,7 @@ namespace TorNet.Tor.Parsers
             this.AssertEndOfLine();
             SwitchToState(newState, relaxOrdering);
             if (optional) { _performStandardChecks = false; }
+            _currentState = newState;
             return;
         }
 
@@ -125,20 +126,8 @@ namespace TorNet.Tor.Parsers
         protected byte[] FetchHexadecimalEncodedString()
         {
             CaptureItem();
-            bool errorEncountered = false;
-            if (0 == (CurrentItemText.Length % 2)) {
-                int bytesCount = CurrentItemText.Length / 2;
-                byte[] result = new byte[bytesCount];
-                for(int index = 0; index < bytesCount; index++) {
-                    byte extractedByte;
-                    if (!byte.TryParse(CurrentItemText.Substring(2 * index, 2), out extractedByte)) {
-                        errorEncountered = true;
-                        break;
-                    }
-                    result[index] = extractedByte;
-                }
-                if (!errorEncountered) { return result; }
-            }
+            byte[] result = CurrentItemText.DecodeHexadecimalEncodedString(false);
+            if (null != result) { return result; }
             ParsingError("Expected an hexadecimal string. Found {0}.", CurrentItemText);
             // Not reachable.
             return null;
@@ -341,7 +330,7 @@ namespace TorNet.Tor.Parsers
                 char candidate = content[endOfSignedContentIndex++]; 
                 if (('\r' == candidate) || ('\n' == candidate)) { break; }
             }
-            return Encoding.UTF8.GetBytes(content.Substring(0, endOfSignedContentIndex));
+            return Encoding.ASCII.GetBytes(content.Substring(0, endOfSignedContentIndex));
         }
 
         protected void ParserInternalError(string message, params object[] args)

@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TorNet.Interop
 {
@@ -25,9 +22,33 @@ namespace TorNet.Interop
             [In] int dwFlags,
             [Out] out IntPtr /* HCRYPTHASH * */ phHash);
 
+        [DllImport(DllName, CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern bool CryptDecodeObjectEx(
+            [In] CertificateEncodingType dwCertEncodingType,
+            [In] IntPtr /* LPCSTR */ lpszStructType,
+            [In] byte[] pbEncoded,
+            [In] int cbEncoded,
+            [In] EncodingFlags dwFlags,
+            [In] IntPtr /* PCRYPT_DECODE_PARA */ pDecodePara,
+            [In,Out] ref IntPtr pvStructInfo,
+            [In,Out] ref int pcbStructInfo);
+
+        [DllImport(DllName)]
+        internal static extern bool CryptVerifySignature(
+            [In] IntPtr /* HCRYPTHASH */ hHash,
+            [In] IntPtr pbSignature,
+            [In] int dwSigLen,
+            [In] IntPtr /* HCRYPTKEY */ hPubKey,
+            [In] IntPtr /* LPCTSTR */ sDescription,
+            [In] SignatureVerificationFlags dwFlags);
+
         [DllImport(DllName)]
         internal static extern bool CryptDestroyHash(
             [In] IntPtr /* HCRYPTHASH */ hHash);
+
+        [DllImport(DllName)]
+        internal static extern bool CryptDestroyKey(
+            [In] IntPtr /* HCRYPTKEY */ hKey);
 
         [DllImport(DllName)]
         internal static extern bool CryptDuplicateHash(
@@ -78,6 +99,26 @@ namespace TorNet.Interop
             MachineKeyset = 0x00000020,
             Silent = 0x00000040,
             DefaultContainerOptional = 0x00000080
+        }
+
+        [Flags()]
+        internal enum EncodingFlags
+        {
+            AllocateMemory = 0x8000,
+            EnableUnicodeDecoding = 0x2000000,
+            NoCopy = 1,
+            DecodeToBeSingeOnly = 2,
+            ShareOIDStrings = 4,
+            DoNotReverseSignatureBytes = 8,
+        }
+
+        [Flags()]
+        internal enum SignatureVerificationFlags : uint
+        {
+            NoHashOID = 0x00000001,
+            // Unused
+            Type2Format = 0x00000002,
+            X931Format = 0x00000004
         }
     }
 }
